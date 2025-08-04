@@ -43,6 +43,7 @@ add_executable(Bg_Reader
     Bg_Reader.cpp 
     lcd_i2c.cpp
     quadrature_encoder.cpp
+    indexed_encoder.cpp
 )
 
 pico_set_program_name(Bg_Reader "Bg_Reader")

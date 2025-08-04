@@ -13,31 +13,20 @@
 // ---------- //
 
 #define quadrature_wrap_target 0
-#define quadrature_wrap 12
+#define quadrature_wrap 1
 #define quadrature_pio_version 0
 
 static const uint16_t quadrature_program_instructions[] = {
             //     .wrap_target
     0x4002, //  0: in     pins, 2
-    0xa0e6, //  1: mov    osr, isr
-    0x6022, //  2: out    x, 2
-    0xa0c2, //  3: mov    isr, y
-    0x6042, //  4: out    y, 2
-    0xa0c1, //  5: mov    isr, x
-    0x4042, //  6: in     y, 2
-    0x00a9, //  7: jmp    x != y, 9
-    0x0000, //  8: jmp    0
-    0xa041, //  9: mov    y, x
-    0xa0cb, // 10: mov    isr, ~null
-    0x8000, // 11: push   noblock
-    0x0000, // 12: jmp    0
+    0x8000, //  1: push   noblock
             //     .wrap
 };
 
 #if !PICO_NO_HARDWARE
 static const struct pio_program quadrature_program = {
     .instructions = quadrature_program_instructions,
-    .length = 13,
+    .length = 2,
     .origin = -1,
     .pio_version = quadrature_pio_version,
 #if PICO_PIO_VERSION > 0
@@ -54,17 +43,47 @@ static inline pio_sm_config quadrature_program_get_default_config(uint offset) {
 static inline void quadrature_program_init(PIO pio, uint sm, uint offset, 
                                           uint pin_a, uint pin_b) {
     pio_sm_config c = quadrature_program_get_default_config(offset);
-    // Set up pins
-    sm_config_set_in_pins(&c, pin_a);  // pin_a and pin_a+1 (pin_b)
+    // Set up input pins (A and B must be consecutive)
+    sm_config_set_in_pins(&c, pin_a);
     sm_config_set_in_shift(&c, false, false, 32);
+    // Configure FIFO for state data
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
     // Set both pins as inputs with pull-ups
     pio_gpio_init(pio, pin_a);
     pio_gpio_init(pio, pin_a + 1);
     pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
     gpio_pull_up(pin_a);
     gpio_pull_up(pin_a + 1);
-    // Configure the state machine
+    // Configure and start the state machine
     pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+// Enhanced helper function to read and decode quadrature data
+static inline bool quadrature_get_count(PIO pio, uint sm, int32_t* delta) {
+    static uint8_t last_state = 0;
+    static const int8_t transition_table[16] = {
+        0,  -1,   1,   0,   // 00 -> 00,01,10,11
+        1,   0,   0,  -1,   // 01 -> 00,01,10,11  
+       -1,   0,   0,   1,   // 10 -> 00,01,10,11
+        0,   1,  -1,   0    // 11 -> 00,01,10,11
+    };
+    *delta = 0;
+    int32_t total_delta = 0;
+    // Process all available states in FIFO
+    while (!pio_sm_is_rx_fifo_empty(pio, sm)) {
+        uint32_t data = pio_sm_get(pio, sm);
+        uint8_t current_state = data & 0x03;  // Bottom 2 bits
+        if (current_state != last_state) {
+            uint8_t table_index = (last_state << 2) | current_state;
+            total_delta += transition_table[table_index];
+            last_state = current_state;
+        }
+    }
+    if (total_delta != 0) {
+        *delta = total_delta;
+        return true;
+    }
+    return false;
 }
 
 #endif
