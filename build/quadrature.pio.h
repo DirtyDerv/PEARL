@@ -61,7 +61,7 @@ static inline void quadrature_program_init(PIO pio, uint sm, uint offset,
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, true);
 }
-// Enhanced helper function with error detection and performance monitoring (v0.03)
+// Enhanced helper function with error detection and performance monitoring (v0.06 PEARL)
 static inline bool quadrature_get_count(PIO pio, uint sm, int32_t* delta) {
     static uint8_t last_state = 0;
     static uint32_t error_count = 0;

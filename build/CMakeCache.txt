@@ -180,7 +180,7 @@ CMAKE_PROJECT_DESCRIPTION:STATIC=
 CMAKE_PROJECT_HOMEPAGE_URL:STATIC=
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=Bg_Reader
+CMAKE_PROJECT_NAME:STATIC=PEARL
 
 //Path to a program.
 CMAKE_RANLIB:FILEPATH=C:/Users/sean/.pico-sdk/toolchain/14_2_Rel1/bin/arm-none-eabi-ranlib.exe
@@ -268,6 +268,15 @@ FETCHCONTENT_QUIET:BOOL=ON
 
 //Enables UPDATE_DISCONNECTED behavior for all content population
 FETCHCONTENT_UPDATES_DISCONNECTED:BOOL=OFF
+
+//Value Computed by CMake
+PEARL_BINARY_DIR:STATIC=C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build
+
+//Value Computed by CMake
+PEARL_IS_TOP_LEVEL:STATIC=ON
+
+//Value Computed by CMake
+PEARL_SOURCE_DIR:STATIC=C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader
 
 //PICO target board (e.g. pico, pico2)
 PICO_BOARD:STRING=pico

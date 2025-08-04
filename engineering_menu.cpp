@@ -54,7 +54,7 @@ void EngineeringMenu::activate_menu() {
         
         lcd->clear();
         lcd->set_cursor(0, 0);
-        lcd->print("ENGINEERING MENU");
+        lcd->print("PEARL MENU");
         lcd->set_cursor(0, 1);
         lcd->print("v");
         lcd->print(PROJECT_VERSION_STRING);
@@ -168,7 +168,7 @@ void EngineeringMenu::handle_menu_input(MenuDirection direction) {
 void EngineeringMenu::draw_main_menu() {
     lcd->clear();
     lcd->set_cursor(0, 0);
-    lcd->print("ENGINEERING MENU");
+    lcd->print("PEARL MENU");
     
     // Show current selection
     lcd->set_cursor(0, 1);
@@ -262,7 +262,7 @@ void EngineeringMenu::handle_system_info(MenuDirection direction) {
     
     lcd->clear();
     lcd->set_cursor(0, 0);
-    lcd->print("SYSTEM INFO");
+    lcd->print("PEARL INFO");
     lcd->set_cursor(0, 1);
     lcd->print("Ver: ");
     lcd->print(PROJECT_VERSION_STRING);

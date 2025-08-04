@@ -41,7 +41,8 @@ void display_position_info(LCD_I2C& lcd, QuadratureEncoder& encoder, BigFont& bi
 int main() {
     stdio_init_all();
     
-    printf("\n=== Position Display System v%s ===\n", get_version_string());
+    printf("\n=== PEARL v%s ===\n", get_version_string());
+    printf("Position Encoder And Readout Logic\n");
     printf("Build: %s %s\n", BUILD_DATE, BUILD_TIME);
     printf("Starting initialization...\n");
     
@@ -114,9 +115,9 @@ int main() {
     // Display startup message
     lcd.clear();
     lcd.set_cursor(0, 0);
-    lcd.printf("BG Reader v%s", get_version_string());
+    lcd.printf("PEARL v%s", get_version_string());
     lcd.set_cursor(0, 1);
-    lcd.print("Big Font Display");
+    lcd.print("Pos Enc & Readout");
     lcd.set_cursor(0, 2);
     lcd.printf("P:%.1f R:%d %s", ENCODER_PITCH, ENCODER_RESOLUTION, 
                encoder.is_pio_enabled() ? "PIO" : "GPIO");
@@ -201,12 +202,13 @@ int main() {
             printf("Mode: %s\n\n", encoder.is_pio_enabled() ? "PIO Hardware" : "GPIO Software");
         } else if (c == 'i' || c == 'I') {
             // Show version and build information
-            printf("\n=== Version Information ===\n");
+            printf("\n=== PEARL Version Information ===\n");
+            printf("Project: Position Encoder And Readout Logic\n");
             printf("Version: %s\n", get_version_string());
             printf("Build Date: %s\n", BUILD_DATE);
             printf("Build Time: %s\n", BUILD_TIME);
-            printf("Features: Big Font Display, PIO Support, Velocity Calc\n");
-            printf("Hardware: Quadrature Encoder + 16x4 I2C LCD\n\n");
+            printf("Features: Big Font Display, PIO Support, Engineering Menu\n");
+            printf("Hardware: Quadrature Encoder + 16x4 I2C LCD + HW-040 Menu\n\n");
         } else if (c == 'c' || c == 'C') {
             // Clear performance counters
             encoder.reset_performance_counters();
