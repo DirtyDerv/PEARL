@@ -40,22 +40,24 @@ pico_sdk_init()
 # Add executable. Default name is the project name, version 0.1
 
 add_executable(PEARL 
-    Bg_Reader.cpp 
-    lcd_i2c.cpp
-    quadrature_encoder.cpp
-    indexed_encoder.cpp
-    big_font.cpp
-    status_display.cpp
-    hw040_encoder.cpp
-    engineering_menu.cpp
+    src/Bg_Reader.cpp 
+    src/lcd_i2c.cpp
+    src/quadrature_encoder.cpp
+    src/indexed_encoder.cpp
+    src/big_font.cpp
+    src/status_display.cpp
+    src/hw040_encoder.cpp
+    src/engineering_menu.cpp
+    src/splash_screen.cpp
+    src/adaptive_config.cpp
 )
 
 pico_set_program_name(PEARL "PEARL")
 pico_set_program_version(PEARL "0.06")
 
 # Generate PIO headers
-pico_generate_pio_header(PEARL ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
-pico_generate_pio_header(PEARL ${CMAKE_CURRENT_LIST_DIR}/quadrature.pio)
+pico_generate_pio_header(PEARL ${CMAKE_CURRENT_LIST_DIR}/pio/blink.pio)
+pico_generate_pio_header(PEARL ${CMAKE_CURRENT_LIST_DIR}/pio/quadrature.pio)
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(PEARL 0)
@@ -68,6 +70,7 @@ target_link_libraries(PEARL
 # Add the standard include files to the build
 target_include_directories(PEARL PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
 # Add any user requested libraries

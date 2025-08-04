@@ -14,15 +14,6 @@
 # EXTERNAL cache entries
 ########################
 
-//Value Computed by CMake
-Bg_Reader_BINARY_DIR:STATIC=C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build
-
-//Value Computed by CMake
-Bg_Reader_IS_TOP_LEVEL:STATIC=ON
-
-//Value Computed by CMake
-Bg_Reader_SOURCE_DIR:STATIC=C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader
-
 //Path to a program.
 CMAKE_ADDR2LINE:FILEPATH=C:/Users/sean/.pico-sdk/toolchain/14_2_Rel1/bin/arm-none-eabi-addr2line.exe
 
@@ -55,11 +46,12 @@ CMAKE_ASM_FLAGS_RELEASE:STRING=-g -O3 -DNDEBUG
 //Flags used by the ASM compiler during RELWITHDEBINFO builds.
 CMAKE_ASM_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG
 
-//No help, variable specified on the command line.
-CMAKE_BUILD_TYPE:STRING=Debug
+//Choose the type of build, options are: 'Debug', 'Release', 'MinSizeRel',
+// 'RelWithDebInfo'.
+CMAKE_BUILD_TYPE:STRING=Release
 
-//No help, variable specified on the command line.
-CMAKE_CXX_COMPILER:FILEPATH=C:/Users/sean/.pico-sdk/toolchain/14_2_Rel1/bin/arm-none-eabi-g++.exe
+//CXX compiler
+CMAKE_CXX_COMPILER:STRING=C:/Users/sean/.pico-sdk/toolchain/14_2_Rel1/bin/arm-none-eabi-g++.exe
 
 //A wrapper around 'ar' adding the appropriate '--plugin' option
 // for the GCC compiler
@@ -84,8 +76,8 @@ CMAKE_CXX_FLAGS_RELEASE:STRING=-g -O3 -DNDEBUG
 //Flags used by the CXX compiler during RELWITHDEBINFO builds.
 CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG
 
-//No help, variable specified on the command line.
-CMAKE_C_COMPILER:FILEPATH=C:/Users/sean/.pico-sdk/toolchain/14_2_Rel1/bin/arm-none-eabi-gcc.exe
+//C compiler
+CMAKE_C_COMPILER:STRING=C:/Users/sean/.pico-sdk/toolchain/14_2_Rel1/bin/arm-none-eabi-gcc.exe
 
 //A wrapper around 'ar' adding the appropriate '--plugin' option
 // for the GCC compiler
@@ -131,14 +123,11 @@ CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO:STRING=
 //Enable/Disable output of build database during the build.
 CMAKE_EXPORT_BUILD_DATABASE:BOOL=
 
-//No help, variable specified on the command line.
-CMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE
-
 //Value Computed by CMake.
 CMAKE_FIND_PACKAGE_REDIRECTS_DIR:STATIC=C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/CMakeFiles/pkgRedirects
 
 //Install path prefix, prepended onto install directories.
-CMAKE_INSTALL_PREFIX:PATH=C:/Program Files (x86)/Bg_Reader
+CMAKE_INSTALL_PREFIX:PATH=C:/Program Files (x86)/PEARL
 
 //Path to a program.
 CMAKE_LINKER:FILEPATH=C:/Users/sean/.pico-sdk/toolchain/14_2_Rel1/bin/arm-none-eabi-ld.exe
@@ -341,9 +330,6 @@ PICO_STDIO_UART:BOOL=ON
 //Globally enable stdio USB
 PICO_STDIO_USB:BOOL=OFF
 
-//No help, variable specified on the command line.
-Python3_EXECUTABLE:STRING=c:/Users/sean/AppData/Local/Programs/Python/Python313/python.exe
-
 //Value Computed by CMake
 pico_sdk_BINARY_DIR:STATIC=C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/pico-sdk
 
@@ -379,6 +365,8 @@ CMAKE_ASM_FLAGS_MINSIZEREL-ADVANCED:INTERNAL=1
 CMAKE_ASM_FLAGS_RELEASE-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_ASM_FLAGS_RELWITHDEBINFO
 CMAKE_ASM_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
+//STRINGS property for variable: CMAKE_BUILD_TYPE
+CMAKE_BUILD_TYPE-STRINGS:INTERNAL=Debug;Release;MinSizeRel;RelWithDebInfo
 //This is the directory where this CMakeCache.txt was created
 CMAKE_CACHEFILE_DIR:INTERNAL=c:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build
 //Major version of cmake used to create the current loaded cache
@@ -522,7 +510,7 @@ DOXYGEN_DOT_EXECUTABLE-ADVANCED:INTERNAL=1
 DOXYGEN_EXECUTABLE-ADVANCED:INTERNAL=1
 FAMILY_MCUS:INTERNAL=RP2040
 //Details about finding Python3
-FIND_PACKAGE_MESSAGE_DETAILS_Python3:INTERNAL=[c:/Users/sean/AppData/Local/Programs/Python/Python313/python.exe][cfound components: Interpreter ][v3.13.5()]
+FIND_PACKAGE_MESSAGE_DETAILS_Python3:INTERNAL=[C:/Users/sean/AppData/Local/Programs/Python/Python313/python.exe][cfound components: Interpreter ][v3.13.5()]
 PICO_32BIT:INTERNAL=1
 PICO_ARM:INTERNAL=1
 PICO_BOOT_STAGE2_DIR:INTERNAL=C:/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2040/boot_stage2
@@ -551,10 +539,11 @@ PICO_TOOLS_DIR:INTERNAL=C:/Users/sean/.pico-sdk/sdk/2.1.1/tools
 _Python3_Compiler_REASON_FAILURE:INTERNAL=
 //Development reason failure
 _Python3_Development_REASON_FAILURE:INTERNAL=
-_Python3_EXECUTABLE:INTERNAL=c:/Users/sean/AppData/Local/Programs/Python/Python313/python.exe
+//Path to a program.
+_Python3_EXECUTABLE:INTERNAL=C:/Users/sean/AppData/Local/Programs/Python/Python313/python.exe
 //Python3 Properties
-_Python3_INTERPRETER_PROPERTIES:INTERNAL=Python;3;13;5;32;64;;;abi3;c:\Users\sean\AppData\Local\Programs\Python\Python313\Lib;c:\Users\sean\AppData\Local\Programs\Python\Python313\Lib;c:\Users\sean\AppData\Local\Programs\Python\Python313\Lib\site-packages;c:\Users\sean\AppData\Local\Programs\Python\Python313\Lib\site-packages
-_Python3_INTERPRETER_SIGNATURE:INTERNAL=d95097e0f6e0abca5038b674f15e6572
+_Python3_INTERPRETER_PROPERTIES:INTERNAL=Python;3;13;5;32;64;;;abi3;C:\Users\sean\AppData\Local\Programs\Python\Python313\Lib;C:\Users\sean\AppData\Local\Programs\Python\Python313\Lib;C:\Users\sean\AppData\Local\Programs\Python\Python313\Lib\site-packages;C:\Users\sean\AppData\Local\Programs\Python\Python313\Lib\site-packages
+_Python3_INTERPRETER_SIGNATURE:INTERNAL=bed099bdef8585d6d12fc60ba76af973
 //NumPy reason failure
 _Python3_NumPy_REASON_FAILURE:INTERNAL=
 
