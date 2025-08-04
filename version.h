@@ -6,10 +6,11 @@
 // Major releases will use whole numbers (1.00, 2.00, etc.)
 
 #define PROJECT_VERSION_MAJOR 0
-#define PROJECT_VERSION_MINOR 2
-#define PROJECT_VERSION_STRING "0.02"
+#define PROJECT_VERSION_MINOR 3
+#define PROJECT_VERSION_STRING "0.03"
 
 // Version History (for reference)
+// 0.03 - 2025-08-04 - Performance & Reliability Enhancements
 // 0.02 - 2025-08-04 - Development branch setup + Enhanced PIO optimization
 // 0.01 - 2025-08-04 - Test version increment system functionality
 // 0.00 - Initial version with new numbering system

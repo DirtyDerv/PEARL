@@ -28,6 +28,12 @@ private:
     uint32_t last_frequency_check;
     uint32_t transitions_per_second;
     float encoder_frequency_hz;
+    
+    // Performance monitoring (v0.03 enhancement)
+    uint32_t fifo_overflow_count;
+    uint32_t invalid_transition_count;
+    uint32_t performance_check_time;
+    bool performance_warning;
     uint32_t last_update_time;
     bool use_pio;
     
@@ -57,6 +63,12 @@ public:
     float get_encoder_frequency() const { return encoder_frequency_hz; }  // Hz
     uint32_t get_transitions_per_second() const { return transitions_per_second; }
     float get_max_theoretical_rpm() const;                       // Based on encoder frequency
+    
+    // Performance monitoring methods (v0.03 enhancement)
+    uint32_t get_fifo_overflow_count() const { return fifo_overflow_count; }
+    uint32_t get_invalid_transition_count() const { return invalid_transition_count; }
+    bool has_performance_warning() const { return performance_warning; }
+    void reset_performance_counters();
     
     // Configuration methods
     void set_pitch(float new_pitch) { pitch = new_pitch; }

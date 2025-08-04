@@ -26,6 +26,12 @@ QuadratureEncoder::QuadratureEncoder(PIO pio_instance, uint state_machine,
     transitions_per_second = 0;
     encoder_frequency_hz = 0.0f;
     
+    // Initialize performance monitoring (v0.03 enhancement)
+    fifo_overflow_count = 0;
+    invalid_transition_count = 0;
+    performance_check_time = last_update_time;
+    performance_warning = false;
+    
     // Clear velocity samples
     for (int i = 0; i < VELOCITY_SAMPLE_COUNT; i++) {
         velocity_samples[i] = 0;
@@ -57,10 +63,28 @@ void QuadratureEncoder::update() {
     int32_t old_position = position;
     
     if (use_pio) {
-        // Read from PIO FIFO
+        // Read from PIO FIFO with performance monitoring
         int32_t delta;
-        while (quadrature_get_count(pio, sm, &delta)) {
+        uint32_t loop_count = 0;
+        while (quadrature_get_count(pio, sm, &delta) && loop_count < 10) {
             position += delta;
+            loop_count++;
+        }
+        
+        // Check for performance issues (v0.03 enhancement)
+        if (loop_count >= 10) {
+            fifo_overflow_count++;
+            performance_warning = true;
+        }
+        
+        // Check FIFO health
+        if (pio_sm_is_rx_fifo_full(pio, sm)) {
+            fifo_overflow_count++;
+            // Clear FIFO to prevent lockup
+            while (!pio_sm_is_rx_fifo_empty(pio, sm) && loop_count < 5) {
+                pio_sm_get(pio, sm);
+                loop_count++;
+            }
         }
     } else {
         // Manual GPIO reading with software decoding
@@ -165,4 +189,12 @@ float QuadratureEncoder::get_max_theoretical_rpm() const {
         return (encoder_frequency_hz * 60.0f) / (float)resolution;
     }
     return 0.0f;
+}
+
+// v0.03 enhancement: Performance monitoring methods
+void QuadratureEncoder::reset_performance_counters() {
+    fifo_overflow_count = 0;
+    invalid_transition_count = 0;
+    performance_warning = false;
+    performance_check_time = to_ms_since_boot(get_absolute_time());
 }

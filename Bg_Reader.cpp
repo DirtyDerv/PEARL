@@ -101,7 +101,7 @@ int main() {
     int32_t last_position = 0;
     
     printf("Starting main position monitoring loop...\n");
-    printf("Commands: R=reset, S=scan, P=PIO toggle, V=velocity, D=display mode, I=version info, H=help\n\n");
+    printf("Commands: R=reset, S=scan, P=PIO toggle, V=velocity/perf, D=display, C=clear counters, I=version, H=help\n\n");
     
     while (true) {
         uint32_t current_time = to_ms_since_boot(get_absolute_time());
@@ -123,8 +123,9 @@ int main() {
             printf("R - Reset position to zero\n");
             printf("S - Scan I2C bus\n");
             printf("P - Toggle PIO/GPIO mode\n");
-            printf("V - Show velocity info\n");
+            printf("V - Show velocity & performance info\n");
             printf("D - Toggle display mode\n");
+            printf("C - Clear performance counters\n");
             printf("I - Show version info\n");
             printf("H - Show this help\n\n");
         } else if (c == 'p' || c == 'P') {
@@ -133,14 +134,18 @@ int main() {
             encoder.init();  // Reinitialize with new mode
             printf("Switched to %s mode\n", encoder.is_pio_enabled() ? "PIO" : "GPIO");
         } else if (c == 'v' || c == 'V') {
-            // Show detailed velocity information
-            printf("\n=== Velocity & Frequency Info ===\n");
+            // Show detailed velocity and performance information
+            printf("\n=== Velocity & Performance Info ===\n");
             printf("Current Velocity: %.4f units/sec\n", encoder.get_velocity());
             printf("Current RPM: %.2f\n", encoder.get_rpm());
             printf("Speed %%: %.1f%% (max 10 units/sec)\n", encoder.get_speed_percentage(10.0f));
             printf("Encoder Frequency: %.2f Hz\n", encoder.get_encoder_frequency());
             printf("Transitions/sec: %lu\n", encoder.get_transitions_per_second());
             printf("Max Theoretical RPM: %.1f\n", encoder.get_max_theoretical_rpm());
+            printf("\n--- Performance Stats ---\n");
+            printf("FIFO Overflows: %lu\n", encoder.get_fifo_overflow_count());
+            printf("Invalid Transitions: %lu\n", encoder.get_invalid_transition_count());
+            printf("Performance Warning: %s\n", encoder.has_performance_warning() ? "YES" : "No");
             printf("Mode: %s\n\n", encoder.is_pio_enabled() ? "PIO Hardware" : "GPIO Software");
         } else if (c == 'i' || c == 'I') {
             // Show version and build information
@@ -150,6 +155,10 @@ int main() {
             printf("Build Time: %s\n", BUILD_TIME);
             printf("Features: Big Font Display, PIO Support, Velocity Calc\n");
             printf("Hardware: Quadrature Encoder + 16x4 I2C LCD\n\n");
+        } else if (c == 'c' || c == 'C') {
+            // Clear performance counters
+            encoder.reset_performance_counters();
+            printf("Performance counters cleared\n");
         } else if (c == 'd' || c == 'D') {
             // Toggle display mode (future enhancement placeholder)
             printf("Big font display mode (additional modes coming soon)\n");

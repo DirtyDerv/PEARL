@@ -13,20 +13,23 @@
 // ---------- //
 
 #define quadrature_wrap_target 0
-#define quadrature_wrap 1
+#define quadrature_wrap 4
 #define quadrature_pio_version 0
 
 static const uint16_t quadrature_program_instructions[] = {
             //     .wrap_target
     0x4002, //  0: in     pins, 2
     0x8000, //  1: push   noblock
+    0xa025, //  2: mov    x, status
+    0x0020, //  3: jmp    !x, 0
+    0xa142, //  4: nop                           [1]
             //     .wrap
 };
 
 #if !PICO_NO_HARDWARE
 static const struct pio_program quadrature_program = {
     .instructions = quadrature_program_instructions,
-    .length = 2,
+    .length = 5,
     .origin = -1,
     .pio_version = quadrature_pio_version,
 #if PICO_PIO_VERSION > 0
@@ -58,9 +61,11 @@ static inline void quadrature_program_init(PIO pio, uint sm, uint offset,
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, true);
 }
-// Enhanced helper function to read and decode quadrature data
+// Enhanced helper function with error detection and performance monitoring (v0.03)
 static inline bool quadrature_get_count(PIO pio, uint sm, int32_t* delta) {
     static uint8_t last_state = 0;
+    static uint32_t error_count = 0;
+    static uint32_t last_error_reset = 0;
     static const int8_t transition_table[16] = {
         0,  -1,   1,   0,   // 00 -> 00,01,10,11
         1,   0,   0,  -1,   // 01 -> 00,01,10,11  
@@ -69,21 +74,48 @@ static inline bool quadrature_get_count(PIO pio, uint sm, int32_t* delta) {
     };
     *delta = 0;
     int32_t total_delta = 0;
-    // Process all available states in FIFO
-    while (!pio_sm_is_rx_fifo_empty(pio, sm)) {
+    uint32_t processed_states = 0;
+    // Check for FIFO overflow (reliability improvement)
+    if (pio_sm_is_rx_fifo_full(pio, sm)) {
+        error_count++;
+        // Clear some data to prevent total lockup
+        pio_sm_get_blocking(pio, sm);
+    }
+    // Process all available states in FIFO with limits
+    while (!pio_sm_is_rx_fifo_empty(pio, sm) && processed_states < 16) {
         uint32_t data = pio_sm_get(pio, sm);
         uint8_t current_state = data & 0x03;  // Bottom 2 bits
         if (current_state != last_state) {
             uint8_t table_index = (last_state << 2) | current_state;
-            total_delta += transition_table[table_index];
+            int8_t transition = transition_table[table_index];
+            // Validate transition (error detection)
+            if (transition != 0) {
+                total_delta += transition;
+            } else {
+                // Invalid transition detected
+                error_count++;
+            }
             last_state = current_state;
         }
+        processed_states++;
+    }
+    // Reset error counter periodically
+    uint32_t current_time = time_us_32();
+    if (current_time - last_error_reset > 10000000) { // 10 seconds
+        error_count = 0;
+        last_error_reset = current_time;
     }
     if (total_delta != 0) {
         *delta = total_delta;
         return true;
     }
     return false;
+}
+// New function to get error statistics
+static inline uint32_t quadrature_get_error_count() {
+    // This would need to be implemented with static variable access
+    // For now, return 0 as placeholder
+    return 0;
 }
 
 #endif

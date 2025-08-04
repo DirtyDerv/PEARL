@@ -401,7 +401,7 @@
 				},
 				{
 					"backtrace" : 16,
-					"define" : "PICO_PROGRAM_VERSION_STRING=\"0.02\""
+					"define" : "PICO_PROGRAM_VERSION_STRING=\"0.03\""
 				},
 				{
 					"backtrace" : 5,
@@ -988,7 +988,7 @@
 				},
 				{
 					"backtrace" : 16,
-					"define" : "PICO_PROGRAM_VERSION_STRING=\"0.02\""
+					"define" : "PICO_PROGRAM_VERSION_STRING=\"0.03\""
 				},
 				{
 					"backtrace" : 5,
@@ -1638,7 +1638,7 @@
 				},
 				{
 					"backtrace" : 16,
-					"define" : "PICO_PROGRAM_VERSION_STRING=\"0.02\""
+					"define" : "PICO_PROGRAM_VERSION_STRING=\"0.03\""
 				},
 				{
 					"backtrace" : 5,
