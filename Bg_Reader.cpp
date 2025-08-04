@@ -8,6 +8,7 @@
 #include "i2c_scanner.h"
 #include "big_font.h"
 #include "status_display.h"
+#include "version.h"
 
 void display_position_info(LCD_I2C& lcd, QuadratureEncoder& encoder, BigFont& big_font, StatusDisplay& status) {
     // Get current position as distance
@@ -23,7 +24,8 @@ void display_position_info(LCD_I2C& lcd, QuadratureEncoder& encoder, BigFont& bi
 int main() {
     stdio_init_all();
     
-    printf("\n=== Position Display System v1.0 ===\n");
+    printf("\n=== Position Display System v%s ===\n", get_version_string());
+    printf("Build: %s %s\n", BUILD_DATE, BUILD_TIME);
     printf("Starting initialization...\n");
     
     // Give USB time to initialize for serial output
@@ -82,15 +84,15 @@ int main() {
     // Display startup message
     lcd.clear();
     lcd.set_cursor(0, 0);
-    lcd.print("Big Font Position");
+    lcd.printf("BG Reader v%s", get_version_string());
     lcd.set_cursor(0, 1);
-    lcd.print("Display Ready!");
+    lcd.print("Big Font Display");
     lcd.set_cursor(0, 2);
     lcd.printf("P:%.1f R:%d %s", ENCODER_PITCH, ENCODER_RESOLUTION, 
                encoder.is_pio_enabled() ? "PIO" : "GPIO");
     status.clear_status_line();
     lcd.set_cursor(0, 3);
-    lcd.print("Starting...");
+    lcd.print("Ready...");
     
     printf("Displaying startup message for 3 seconds...\n");
     sleep_ms(3000); // Show startup message for 3 seconds
@@ -99,7 +101,7 @@ int main() {
     int32_t last_position = 0;
     
     printf("Starting main position monitoring loop...\n");
-    printf("Commands: R=reset, S=scan, P=PIO toggle, V=velocity, D=display mode, H=help\n\n");
+    printf("Commands: R=reset, S=scan, P=PIO toggle, V=velocity, D=display mode, I=version info, H=help\n\n");
     
     while (true) {
         uint32_t current_time = to_ms_since_boot(get_absolute_time());
@@ -123,6 +125,7 @@ int main() {
             printf("P - Toggle PIO/GPIO mode\n");
             printf("V - Show velocity info\n");
             printf("D - Toggle display mode\n");
+            printf("I - Show version info\n");
             printf("H - Show this help\n\n");
         } else if (c == 'p' || c == 'P') {
             // Toggle PIO mode
@@ -136,6 +139,14 @@ int main() {
             printf("Current RPM: %.2f\n", encoder.get_rpm());
             printf("Speed %%: %.1f%% (max 10 units/sec)\n", encoder.get_speed_percentage(10.0f));
             printf("Mode: %s\n\n", encoder.is_pio_enabled() ? "PIO Hardware" : "GPIO Software");
+        } else if (c == 'i' || c == 'I') {
+            // Show version and build information
+            printf("\n=== Version Information ===\n");
+            printf("Version: %s\n", get_version_string());
+            printf("Build Date: %s\n", BUILD_DATE);
+            printf("Build Time: %s\n", BUILD_TIME);
+            printf("Features: Big Font Display, PIO Support, Velocity Calc\n");
+            printf("Hardware: Quadrature Encoder + 16x4 I2C LCD\n\n");
         } else if (c == 'd' || c == 'D') {
             // Toggle display mode (future enhancement placeholder)
             printf("Big font display mode (additional modes coming soon)\n");
