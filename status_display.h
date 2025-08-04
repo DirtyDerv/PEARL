@@ -27,6 +27,11 @@ public:
     void update(const QuadratureEncoder& encoder);
     void clear_status_line();
     
+    // v0.04 enhancement: Performance status indicators
+    void draw_performance_status(bool has_warning, uint32_t fifo_errors, uint32_t invalid_transitions);
+    void draw_update_rate_indicator(uint32_t update_rate);
+    void draw_system_health_bar(float cpu_load_estimate);
+    
     // Configuration
     void set_max_velocity_for_display(float max_vel) { max_display_velocity = max_vel; }
     

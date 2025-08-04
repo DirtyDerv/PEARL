@@ -103,3 +103,51 @@ void StatusDisplay::clear_status_line() {
     lcd->set_cursor(0, 3);
     lcd->print("                "); // Clear entire bottom line
 }
+
+// v0.04 enhancement: Performance status indicators
+void StatusDisplay::draw_performance_status(bool has_warning, uint32_t fifo_errors, uint32_t invalid_transitions) {
+    lcd->set_cursor(0, 3);
+    
+    if (has_warning || fifo_errors > 0 || invalid_transitions > 0) {
+        // Show warning indicator
+        lcd->print("!");
+        if (fifo_errors > 0) {
+            lcd->printf("F%lu", fifo_errors);
+        }
+        if (invalid_transitions > 0) {
+            lcd->printf("E%lu", invalid_transitions);
+        }
+    } else {
+        // Show OK status
+        lcd->print("OK");
+    }
+}
+
+void StatusDisplay::draw_update_rate_indicator(uint32_t update_rate) {
+    lcd->set_cursor(4, 3);
+    
+    if (update_rate <= 20) {
+        lcd->print("T");  // Turbo
+    } else if (update_rate <= 50) {
+        lcd->print("F");  // Fast
+    } else if (update_rate <= 100) {
+        lcd->print("N");  // Normal
+    } else {
+        lcd->print("S");  // Slow
+    }
+}
+
+void StatusDisplay::draw_system_health_bar(float cpu_load_estimate) {
+    lcd->set_cursor(13, 3);
+    
+    // Simple health indicator (3 characters)
+    if (cpu_load_estimate < 0.3f) {
+        lcd->print("|||");  // Excellent
+    } else if (cpu_load_estimate < 0.6f) {
+        lcd->print("|| ");  // Good
+    } else if (cpu_load_estimate < 0.8f) {
+        lcd->print("|  ");  // Fair
+    } else {
+        lcd->print("   ");  // Poor
+    }
+}

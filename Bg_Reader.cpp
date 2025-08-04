@@ -9,16 +9,36 @@
 #include "big_font.h"
 #include "status_display.h"
 #include "version.h"
+#include "adaptive_config.h"
 
-void display_position_info(LCD_I2C& lcd, QuadratureEncoder& encoder, BigFont& big_font, StatusDisplay& status) {
+void display_position_info(LCD_I2C& lcd, QuadratureEncoder& encoder, BigFont& big_font, StatusDisplay& status, AdaptiveConfig& adaptive) {
     // Get current position as distance
     float position = encoder.get_distance();
     
     // Display the big number in ####.# format across top 3 rows
     big_font.display_big_number(position, 0, 0);
     
-    // Update status line (direction and speed) on bottom row
+    // Enhanced status display with performance indicators (v0.04)
+    float velocity = encoder.get_velocity();
+    
+    // Update adaptive configuration
+    update_speed_history(&adaptive, velocity);
+    
+    // Calculate CPU load estimate (simplified)
+    float cpu_load = (encoder.get_fifo_overflow_count() + encoder.get_invalid_transition_count()) / 100.0f;
+    if (cpu_load > 1.0f) cpu_load = 1.0f;
+    
+    // Draw enhanced status line
+    status.draw_performance_status(encoder.has_performance_warning(), 
+                                 encoder.get_fifo_overflow_count(), 
+                                 encoder.get_invalid_transition_count());
+    status.draw_update_rate_indicator(adaptive.current_update_rate);
+    
+    // Update standard status (direction and speed)
     status.update(encoder);
+    
+    // Add system health indicator
+    status.draw_system_health_bar(cpu_load);
 }
 
 int main() {
@@ -61,6 +81,21 @@ int main() {
     lcd.backlight_on();
     
     printf("LCD initialized successfully\n");
+    
+    // Initialize adaptive configuration (v0.04 enhancement)
+    AdaptiveConfig adaptive = {0};
+    adaptive.current_update_rate = UPDATE_RATE_NORMAL;
+    adaptive.current_preset = PRESET_BALANCED;
+    adaptive.auto_adaptive_enabled = true;
+    adaptive.history_index = 0;
+    adaptive.last_adaptation_time = to_ms_since_boot(get_absolute_time());
+    
+    // Clear speed history
+    for (int i = 0; i < 8; i++) {
+        adaptive.speed_history[i] = 0.0f;
+    }
+    
+    printf("Adaptive configuration initialized\n");
     
     // Initialize big font display system
     BigFont big_font(&lcd);
@@ -126,6 +161,7 @@ int main() {
             printf("V - Show velocity & performance info\n");
             printf("D - Toggle display mode\n");
             printf("C - Clear performance counters\n");
+            printf("A - Toggle adaptive mode\n");
             printf("I - Show version info\n");
             printf("H - Show this help\n\n");
         } else if (c == 'p' || c == 'P') {
@@ -159,18 +195,34 @@ int main() {
             // Clear performance counters
             encoder.reset_performance_counters();
             printf("Performance counters cleared\n");
+        } else if (c == 'a' || c == 'A') {
+            // Toggle adaptive mode
+            adaptive.auto_adaptive_enabled = !adaptive.auto_adaptive_enabled;
+            printf("Adaptive mode: %s\n", adaptive.auto_adaptive_enabled ? "ON" : "OFF");
+            if (!adaptive.auto_adaptive_enabled) {
+                adaptive.current_update_rate = UPDATE_RATE_NORMAL;
+                printf("Update rate reset to normal\n");
+            }
         } else if (c == 'd' || c == 'D') {
             // Toggle display mode (future enhancement placeholder)
             printf("Big font display mode (additional modes coming soon)\n");
         }
         
-        // Update display at specified interval or when position changes significantly
+        // Update display at adaptive interval or when position changes significantly
         int32_t current_position = encoder.get_raw_position();
         bool position_changed = (current_position != last_position);
-        bool time_to_update = (current_time - last_update) >= UPDATE_INTERVAL_MS;
+        
+        // v0.04: Adaptive update rate based on speed and performance
+        if (adaptive.auto_adaptive_enabled) {
+            float current_speed = fabsf(encoder.get_velocity());
+            uint32_t fifo_errors = encoder.get_fifo_overflow_count();
+            adaptive.current_update_rate = calculate_optimal_update_rate(current_speed, fifo_errors);
+        }
+        
+        bool time_to_update = (current_time - last_update) >= adaptive.current_update_rate;
         
         if (position_changed || time_to_update) {
-            display_position_info(lcd, encoder, big_font, status);
+            display_position_info(lcd, encoder, big_font, status, adaptive);
             last_update = current_time;
             
             // Print to serial for debugging (only when position changes)
