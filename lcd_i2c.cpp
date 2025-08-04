@@ -113,3 +113,15 @@ void LCD_I2C::display_on() {
 void LCD_I2C::display_off() {
     write_byte(LCD_DISPLAY_CONTROL | LCD_DISPLAY_OFF | LCD_CURSOR_OFF | LCD_BLINK_OFF, 0);
 }
+
+void LCD_I2C::create_char(uint8_t location, const uint8_t charmap[]) {
+    location &= 0x7; // We only have 8 locations 0-7
+    write_byte(LCD_SET_CGRAM_ADDR | (location << 3), 0);
+    for (int i = 0; i < 8; i++) {
+        write_byte(charmap[i], RS);
+    }
+}
+
+void LCD_I2C::write(uint8_t value) {
+    write_byte(value, RS);
+}

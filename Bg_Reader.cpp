@@ -6,30 +6,18 @@
 #include "lcd_i2c.h"
 #include "quadrature_encoder.h"
 #include "i2c_scanner.h"
+#include "big_font.h"
+#include "status_display.h"
 
-void display_position_info(LCD_I2C& lcd, QuadratureEncoder& encoder) {
-    // Clear display and show enhanced position information
-    lcd.clear();
+void display_position_info(LCD_I2C& lcd, QuadratureEncoder& encoder, BigFont& big_font, StatusDisplay& status) {
+    // Get current position as distance
+    float position = encoder.get_distance();
     
-    // Line 1: Title with mode indicator
-    lcd.set_cursor(0, 0);
-    if (encoder.is_pio_enabled()) {
-        lcd.print("POS Display [PIO]");
-    } else {
-        lcd.print("POS Display [GPIO]");
-    }
+    // Display the big number in ####.# format across top 3 rows
+    big_font.display_big_number(position, 0, 0);
     
-    // Line 2: Raw encoder count and velocity
-    lcd.set_cursor(0, 1);
-    lcd.printf("Cnt:%6ld V:%+.2f", encoder.get_raw_position(), encoder.get_velocity());
-    
-    // Line 3: Calculated distance and RPM
-    lcd.set_cursor(0, 2);
-    lcd.printf("Dst:%7.4f %4.0fRPM", encoder.get_distance(), encoder.get_rpm());
-    
-    // Line 4: Configuration info
-    lcd.set_cursor(0, 3);
-    lcd.printf("P:%.1f R:%lu", encoder.get_pitch(), encoder.get_resolution());
+    // Update status line (direction and speed) on bottom row
+    status.update(encoder);
 }
 
 int main() {
@@ -72,6 +60,17 @@ int main() {
     
     printf("LCD initialized successfully\n");
     
+    // Initialize big font display system
+    BigFont big_font(&lcd);
+    big_font.init();
+    
+    // Initialize status display for direction and speed
+    StatusDisplay status(&lcd);
+    status.set_max_velocity_for_display(10.0f); // Set max velocity for speed bar
+    status.init();
+    
+    printf("Big font and status display initialized\n");
+    
     // Initialize Quadrature Encoder
     QuadratureEncoder encoder(pio0, 0, ENCODER_PIN_A, ENCODER_PIN_B, 
                              ENCODER_PITCH, ENCODER_RESOLUTION);
@@ -83,13 +82,15 @@ int main() {
     // Display startup message
     lcd.clear();
     lcd.set_cursor(0, 0);
-    lcd.print("Position Display");
+    lcd.print("Big Font Position");
     lcd.set_cursor(0, 1);
-    lcd.print("System Ready!");
+    lcd.print("Display Ready!");
     lcd.set_cursor(0, 2);
-    lcd.printf("P:%.1f R:%d", ENCODER_PITCH, ENCODER_RESOLUTION);
+    lcd.printf("P:%.1f R:%d %s", ENCODER_PITCH, ENCODER_RESOLUTION, 
+               encoder.is_pio_enabled() ? "PIO" : "GPIO");
+    status.clear_status_line();
     lcd.set_cursor(0, 3);
-    lcd.print("Waiting...");
+    lcd.print("Starting...");
     
     printf("Displaying startup message for 3 seconds...\n");
     sleep_ms(3000); // Show startup message for 3 seconds
@@ -98,7 +99,7 @@ int main() {
     int32_t last_position = 0;
     
     printf("Starting main position monitoring loop...\n");
-    printf("Commands: R=reset, S=scan I2C, P=toggle PIO/GPIO, V=velocity info, H=help\n\n");
+    printf("Commands: R=reset, S=scan, P=PIO toggle, V=velocity, D=display mode, H=help\n\n");
     
     while (true) {
         uint32_t current_time = to_ms_since_boot(get_absolute_time());
@@ -121,6 +122,7 @@ int main() {
             printf("S - Scan I2C bus\n");
             printf("P - Toggle PIO/GPIO mode\n");
             printf("V - Show velocity info\n");
+            printf("D - Toggle display mode\n");
             printf("H - Show this help\n\n");
         } else if (c == 'p' || c == 'P') {
             // Toggle PIO mode
@@ -134,6 +136,9 @@ int main() {
             printf("Current RPM: %.2f\n", encoder.get_rpm());
             printf("Speed %%: %.1f%% (max 10 units/sec)\n", encoder.get_speed_percentage(10.0f));
             printf("Mode: %s\n\n", encoder.is_pio_enabled() ? "PIO Hardware" : "GPIO Software");
+        } else if (c == 'd' || c == 'D') {
+            // Toggle display mode (future enhancement placeholder)
+            printf("Big font display mode (additional modes coming soon)\n");
         }
         
         // Update display at specified interval or when position changes significantly
@@ -142,7 +147,7 @@ int main() {
         bool time_to_update = (current_time - last_update) >= UPDATE_INTERVAL_MS;
         
         if (position_changed || time_to_update) {
-            display_position_info(lcd, encoder);
+            display_position_info(lcd, encoder, big_font, status);
             last_update = current_time;
             
             // Print to serial for debugging (only when position changes)

@@ -8,12 +8,12 @@
 3858	4150	7760038591402060	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/pico_fix/rp2040_usb_device_enumeration/rp2040_usb_device_enumeration.c.obj	ced71d6c6792ae87
 234	506	7760038555048543	pico-sdk/src/rp2040/boot_stage2/bs2_default.elf	1d7792ac3fdd2a8d
 721	1918	7760038560033776	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/pico_stdlib/stdlib.c.obj	ca92931cee5c4c3
-71	284	7760038555628033	quadrature.pio.h	915a46a5df85735
+31	75	7760048389973495	quadrature.pio.h	915a46a5df85735
 745	2000	7760038560283513	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2040/pico_platform/platform.c.obj	5c47cf46465d082a
 2805	3208	7760038580887452	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/pico_atomic/atomic.c.obj	ef6b7ee58fc04cd9
 64	284	7760038555615285	C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/blink.pio.h	2f97b599b3ac99ce
 2108	2609	7760038573916912	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/hardware_watchdog/watchdog.c.obj	6efb754a8bad5c94
-71	284	7760038555628033	C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/quadrature.pio.h	915a46a5df85735
+31	75	7760048389973495	C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/quadrature.pio.h	915a46a5df85735
 506	615	7760038558883871	C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/pico-sdk/src/rp2040/boot_stage2/bs2_default.bin	6c26f7cddece6fdc
 3178	3765	7760038584604596	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/lib/tinyusb/src/portable/raspberrypi/rp2040/dcd_rp2040.c.obj	9126f2d41f2f2564
 506	615	7760038558883871	pico-sdk/src/rp2040/boot_stage2/bs2_default.bin	6c26f7cddece6fdc
@@ -21,17 +21,17 @@
 2669	3124	7760038579508174	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/pico_float/float_aeabi_rp2040.S.obj	355eb7dfdcedc78e
 616	690	7760038559555120	pico-sdk/src/rp2040/boot_stage2/bs2_default_padded_checksummed.S	40bc6435e3b63c98
 616	690	7760038559555120	C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/pico-sdk/src/rp2040/boot_stage2/bs2_default_padded_checksummed.S	40bc6435e3b63c98
-26	326	7760040392872883	CMakeFiles/Bg_Reader.dir/Bg_Reader.cpp.obj	a4628f7b124cde8a
+75	584	7760048389973495	CMakeFiles/Bg_Reader.dir/Bg_Reader.cpp.obj	a4628f7b124cde8a
 2350	2804	7760038576317719	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/pico_flash/flash.c.obj	3beafa013e1de1c4
 700	1777	7760038559830447	CMakeFiles/Bg_Reader.dir/lcd_i2c.cpp.obj	ff8c13e22d0964f0
-711	1847	7760038559949673	CMakeFiles/Bg_Reader.dir/quadrature_encoder.cpp.obj	4f140f81a375c048
+102	705	7760048390323255	CMakeFiles/Bg_Reader.dir/quadrature_encoder.cpp.obj	4f140f81a375c048
 733	1987	7760038560157454	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/hardware_gpio/gpio.c.obj	fd1f81f2a0083ea5
 839	2012	7760038561217593	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/pico_platform_panic/panic.c.obj	f37bf85adc2717e2
 997	2025	7760038562716365	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/common/hardware_claim/claim.c.obj	a2ed2737a0b20bf3
 1988	2376	7760038572711126	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/hardware_timer/timer.c.obj	1d0315ea8271f368
 1157	2039	7760038564388837	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/hardware_sync/sync.c.obj	255e9ef5c5642140
 2524	3162	7760038578074429	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/pico_double/double_init_rom_rp2040.c.obj	de38a9587be8babb
-327	681	7760040395870305	Bg_Reader.elf	601374bcdec1bd93
+706	1083	7760048396245188	Bg_Reader.elf	a4e72dbbc3ee7a60
 1243	2054	7760038565263066	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/hardware_sync_spin_lock/sync_spin_lock.c.obj	92766ae1bb35055b
 2425	3078	7760038577084100	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/pico_runtime_init/runtime_init.c.obj	b190b02aa00eec34
 1421	2071	7760038567044592	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/hardware_irq/irq.c.obj	9eadf53ac34078b9
@@ -73,6 +73,7 @@
 2952	3448	7760038582265936	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/pico_printf/printf.c.obj	c4b8b221ca9dbc45
 3162	3478	7760038584457840	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/hardware_xip_cache/xip_cache.c.obj	85941ecdd47c0145
 3108	3504	7760038583910337	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/pico_stdio_usb/stdio_usb_descriptors.c.obj	3a8e5a4cbc997586
+105	625	7760048390365955	CMakeFiles/Bg_Reader.dir/indexed_encoder.cpp.obj	23d44e10e0473da1
 3125	3519	7760038584074596	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/pico_unique_id/unique_id.c.obj	221a519219a50eae
 3079	3537	7760038583622158	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/pico_stdio_usb/reset_interface.c.obj	35a6c00164d2e1d6
 3066	3553	7760038583489274	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/pico_stdio/stdio.c.obj	5efab306e5882a5d
@@ -96,9 +97,8 @@
 3874	4208	7760038591573903	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/hardware_i2c/i2c.c.obj	48438148e72fdd28
 3765	4231	7760038590477189	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/lib/tinyusb/src/common/tusb_fifo.c.obj	96212cdfd40bf8de
 3896	4275	7760038591784651	CMakeFiles/Bg_Reader.dir/C_/Users/sean/.pico-sdk/sdk/2.1.1/src/rp2_common/hardware_pio/pio.c.obj	6b386f37ae7e5a76
-31	75	7760048389973495	quadrature.pio.h	915a46a5df85735
-31	75	7760048389973495	C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/quadrature.pio.h	915a46a5df85735
-75	584	7760048389973495	CMakeFiles/Bg_Reader.dir/Bg_Reader.cpp.obj	a4628f7b124cde8a
-105	625	7760048390365955	CMakeFiles/Bg_Reader.dir/indexed_encoder.cpp.obj	23d44e10e0473da1
-102	705	7760048390323255	CMakeFiles/Bg_Reader.dir/quadrature_encoder.cpp.obj	4f140f81a375c048
-706	1083	7760048396245188	Bg_Reader.elf	a4e72dbbc3ee7a60
+57	465	7760053460507489	CMakeFiles/Bg_Reader.dir/lcd_i2c.cpp.obj	ff8c13e22d0964f0
+33	467	7760053460176029	CMakeFiles/Bg_Reader.dir/Bg_Reader.cpp.obj	a4628f7b124cde8a
+53	585	7760053722748740	CMakeFiles/Bg_Reader.dir/status_display.cpp.obj	cf20238e830febd0
+31	369	7760054010866448	CMakeFiles/Bg_Reader.dir/big_font.cpp.obj	2b596ee0246adc14
+370	760	7760054014334110	Bg_Reader.elf	2f756ac0997fbe9e

@@ -75,6 +75,8 @@ public:
     void backlight_off();
     void display_on();
     void display_off();
+    void create_char(uint8_t location, const uint8_t charmap[]);
+    void write(uint8_t value);
 };
 
 #endif // LCD_I2C_H
