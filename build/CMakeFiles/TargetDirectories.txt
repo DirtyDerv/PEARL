@@ -1,6 +1,6 @@
-C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/CMakeFiles/Bg_Reader.dir
-C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/CMakeFiles/Bg_Reader_blink_pio_h.dir
-C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/CMakeFiles/Bg_Reader_quadrature_pio_h.dir
+C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/CMakeFiles/PEARL.dir
+C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/CMakeFiles/PEARL_blink_pio_h.dir
+C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/CMakeFiles/PEARL_quadrature_pio_h.dir
 C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/CMakeFiles/edit_cache.dir
 C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/CMakeFiles/rebuild_cache.dir
 C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/pico-sdk/CMakeFiles/edit_cache.dir

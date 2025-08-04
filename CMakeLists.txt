@@ -28,7 +28,7 @@ set(PICO_BOARD pico CACHE STRING "Board type")
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
-project(Bg_Reader C CXX ASM)
+project(PEARL C CXX ASM)
 
 set(PICO_CXX_ENABLE_EXCEPTIONS 1)
 
@@ -39,41 +39,49 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(Bg_Reader 
-    Bg_Reader.cpp 
-    lcd_i2c.cpp
-    quadrature_encoder.cpp
-    indexed_encoder.cpp
-    big_font.cpp
-    status_display.cpp
+add_executable(PEARL 
+    src/Bg_Reader.cpp 
+    src/lcd_i2c.cpp
+    src/quadrature_encoder.cpp
+    src/indexed_encoder.cpp
+    src/big_font.cpp
+    src/status_display.cpp
+    src/hw040_encoder.cpp
+    src/engineering_menu.cpp
+    src/splash_screen.cpp
+    src/adaptive_config.cpp
+    src/config_manager.cpp
 )
 
-pico_set_program_name(Bg_Reader "Bg_Reader")
-pico_set_program_version(Bg_Reader "0.01")
+pico_set_program_name(PEARL "PEARL")
+pico_set_program_version(PEARL "0.07")
 
 # Generate PIO headers
-pico_generate_pio_header(Bg_Reader ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
-pico_generate_pio_header(Bg_Reader ${CMAKE_CURRENT_LIST_DIR}/quadrature.pio)
+pico_generate_pio_header(PEARL ${CMAKE_CURRENT_LIST_DIR}/pio/blink.pio)
+pico_generate_pio_header(PEARL ${CMAKE_CURRENT_LIST_DIR}/pio/quadrature.pio)
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(Bg_Reader 0)
-pico_enable_stdio_usb(Bg_Reader 1)
+pico_enable_stdio_uart(PEARL 0)
+pico_enable_stdio_usb(PEARL 1)
 
 # Add the standard library to the build
-target_link_libraries(Bg_Reader
+target_link_libraries(PEARL
         pico_stdlib)
 
 # Add the standard include files to the build
-target_include_directories(Bg_Reader PRIVATE
+target_include_directories(PEARL PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
 # Add any user requested libraries
-target_link_libraries(Bg_Reader 
+target_link_libraries(PEARL 
         hardware_i2c
         hardware_pio
         hardware_gpio
+        hardware_timer
+        hardware_flash
         )
 
-pico_add_extra_outputs(Bg_Reader)
+pico_add_extra_outputs(PEARL)
 
