@@ -6,10 +6,11 @@
 // Major releases will use whole numbers (1.00, 2.00, etc.)
 
 #define PROJECT_VERSION_MAJOR 0
-#define PROJECT_VERSION_MINOR 0
-#define PROJECT_VERSION_STRING "0.00"
+#define PROJECT_VERSION_MINOR 1
+#define PROJECT_VERSION_STRING "0.01"
 
 // Version History (for reference)
+// 0.01 - 2025-08-04 - Test version increment system functionality
 // 0.00 - Initial version with new numbering system
 //        - Big font LCD display system
 //        - Quadrature encoder with PIO support
