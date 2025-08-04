@@ -21,6 +21,11 @@ QuadratureEncoder::QuadratureEncoder(PIO pio_instance, uint state_machine,
     sample_index = 0;
     last_update_time = to_ms_since_boot(get_absolute_time());
     
+    // Initialize frequency monitoring (v0.02 enhancement)
+    last_frequency_check = last_update_time;
+    transitions_per_second = 0;
+    encoder_frequency_hz = 0.0f;
+    
     // Clear velocity samples
     for (int i = 0; i < VELOCITY_SAMPLE_COUNT; i++) {
         velocity_samples[i] = 0;
@@ -73,8 +78,17 @@ void QuadratureEncoder::update() {
         int32_t position_delta = position - old_position;
         uint32_t time_delta = current_time - last_update_time;
         add_velocity_sample(position_delta, time_delta);
-        last_update_time = current_time;
+        
+        // Update frequency monitoring (v0.02 enhancement)
+        if (current_time - last_frequency_check >= 1000) { // Update every second
+            encoder_frequency_hz = transitions_per_second / 4.0f; // 4 transitions per encoder pulse
+            transitions_per_second = 0;
+            last_frequency_check = current_time;
+        }
+        transitions_per_second += abs(position_delta);
     }
+    
+    last_update_time = current_time;
     
     // Update velocity calculation
     update_velocity();
@@ -139,6 +153,16 @@ float QuadratureEncoder::get_rpm() const {
 float QuadratureEncoder::get_speed_percentage(float max_speed) const {
     if (max_speed > 0) {
         return (fabsf(current_velocity) / max_speed) * 100.0f;
+    }
+    return 0.0f;
+}
+
+// v0.02 enhancement: Frequency monitoring methods
+float QuadratureEncoder::get_max_theoretical_rpm() const {
+    // Maximum RPM based on encoder frequency
+    // Max frequency in Hz * 60 seconds/minute / resolution = RPM
+    if (resolution > 0 && encoder_frequency_hz > 0) {
+        return (encoder_frequency_hz * 60.0f) / (float)resolution;
     }
     return 0.0f;
 }

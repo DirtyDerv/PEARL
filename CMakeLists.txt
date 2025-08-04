@@ -49,7 +49,7 @@ add_executable(Bg_Reader
 )
 
 pico_set_program_name(Bg_Reader "Bg_Reader")
-pico_set_program_version(Bg_Reader "0.01")
+pico_set_program_version(Bg_Reader "0.02")
 
 # Generate PIO headers
 pico_generate_pio_header(Bg_Reader ${CMAKE_CURRENT_LIST_DIR}/blink.pio)

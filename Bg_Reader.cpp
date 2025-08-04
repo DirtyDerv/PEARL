@@ -134,10 +134,13 @@ int main() {
             printf("Switched to %s mode\n", encoder.is_pio_enabled() ? "PIO" : "GPIO");
         } else if (c == 'v' || c == 'V') {
             // Show detailed velocity information
-            printf("\n=== Velocity Info ===\n");
+            printf("\n=== Velocity & Frequency Info ===\n");
             printf("Current Velocity: %.4f units/sec\n", encoder.get_velocity());
             printf("Current RPM: %.2f\n", encoder.get_rpm());
             printf("Speed %%: %.1f%% (max 10 units/sec)\n", encoder.get_speed_percentage(10.0f));
+            printf("Encoder Frequency: %.2f Hz\n", encoder.get_encoder_frequency());
+            printf("Transitions/sec: %lu\n", encoder.get_transitions_per_second());
+            printf("Max Theoretical RPM: %.1f\n", encoder.get_max_theoretical_rpm());
             printf("Mode: %s\n\n", encoder.is_pio_enabled() ? "PIO Hardware" : "GPIO Software");
         } else if (c == 'i' || c == 'I') {
             // Show version and build information

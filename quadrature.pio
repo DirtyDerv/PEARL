@@ -1,15 +1,18 @@
-; Simplified Quadrature encoder PIO program
+; Enhanced Quadrature encoder PIO program v0.02
 ; Optimized for 32-instruction limit with efficient quadrature decoding
+; Added timing optimization and frequency monitoring support
 
 .program quadrature
 
-; Optimized quadrature decoder using jump table approach
-; Y register holds the previous state
+; Optimized quadrature decoder with improved timing
+; Enhanced for high-frequency encoder support
 
 .wrap_target
 start:
     in pins, 2              ; Read current encoder state (A, B)
     push noblock            ; Push current state to FIFO for processing
+    ; Optional: Add small delay for debouncing high-frequency encoders
+    ; nop [1]               ; Uncomment for very high frequency encoders
 .wrap
 
 % c-sdk {

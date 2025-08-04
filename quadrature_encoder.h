@@ -23,6 +23,11 @@ private:
     uint32_t time_samples[VELOCITY_SAMPLE_COUNT];
     uint8_t sample_index;
     float current_velocity;
+    
+    // Frequency monitoring (v0.02 enhancement)
+    uint32_t last_frequency_check;
+    uint32_t transitions_per_second;
+    float encoder_frequency_hz;
     uint32_t last_update_time;
     bool use_pio;
     
@@ -47,6 +52,11 @@ public:
     float get_velocity() const { return current_velocity; }      // Distance per second
     float get_rpm() const;                                       // Revolutions per minute
     float get_speed_percentage(float max_speed) const;           // Percentage of max speed
+    
+    // Frequency monitoring methods (v0.02 enhancement)
+    float get_encoder_frequency() const { return encoder_frequency_hz; }  // Hz
+    uint32_t get_transitions_per_second() const { return transitions_per_second; }
+    float get_max_theoretical_rpm() const;                       // Based on encoder frequency
     
     // Configuration methods
     void set_pitch(float new_pitch) { pitch = new_pitch; }
