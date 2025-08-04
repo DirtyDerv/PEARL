@@ -46,11 +46,12 @@ add_executable(Bg_Reader
     indexed_encoder.cpp
     big_font.cpp
     status_display.cpp
-    adaptive_config.cpp
+    hw040_encoder.cpp
+    engineering_menu.cpp
 )
 
 pico_set_program_name(Bg_Reader "Bg_Reader")
-pico_set_program_version(Bg_Reader "0.04")
+pico_set_program_version(Bg_Reader "0.05")
 
 # Generate PIO headers
 pico_generate_pio_header(Bg_Reader ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
@@ -74,6 +75,7 @@ target_link_libraries(Bg_Reader
         hardware_i2c
         hardware_pio
         hardware_gpio
+        hardware_timer
         )
 
 pico_add_extra_outputs(Bg_Reader)

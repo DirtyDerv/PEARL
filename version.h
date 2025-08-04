@@ -6,10 +6,11 @@
 // Major releases will use whole numbers (1.00, 2.00, etc.)
 
 #define PROJECT_VERSION_MAJOR 0
-#define PROJECT_VERSION_MINOR 4
-#define PROJECT_VERSION_STRING "0.04"
+#define PROJECT_VERSION_MINOR 5
+#define PROJECT_VERSION_STRING "0.05"
 
 // Version History (for reference)
+// 0.05 - 2025-08-04 - HW-040 Rotary Encoder Menu System & Engineering Interface
 // 0.04 - 2025-08-04 - Adaptive Configuration & Advanced Performance Monitoring
 // 0.03 - 2025-08-04 - Performance & Reliability Enhancements
 // 0.02 - 2025-08-04 - Development branch setup + Enhanced PIO optimization

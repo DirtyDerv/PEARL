@@ -7,6 +7,11 @@
 #define ENCODER_PIN_A 10
 #define ENCODER_PIN_B 11
 
+// HW-040 Rotary Encoder Menu Control (v0.05)
+#define MENU_ENCODER_CLK 12     // HW-040 CLK pin (A)
+#define MENU_ENCODER_DT 13      // HW-040 DT pin (B)  
+#define MENU_ENCODER_SW 14      // HW-040 SW pin (Push button)
+
 // System Configuration
 #define ENCODER_PITCH 1.0f       // Thread pitch (units per revolution)
 #define ENCODER_RESOLUTION 500   // Pulses per revolution

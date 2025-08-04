@@ -9,20 +9,18 @@
 #include "big_font.h"
 #include "status_display.h"
 #include "version.h"
-#include "adaptive_config.h"
+#include "hw040_encoder.h"
+#include "engineering_menu.h"
 
-void display_position_info(LCD_I2C& lcd, QuadratureEncoder& encoder, BigFont& big_font, StatusDisplay& status, AdaptiveConfig& adaptive) {
+void display_position_info(LCD_I2C& lcd, QuadratureEncoder& encoder, BigFont& big_font, StatusDisplay& status) {
     // Get current position as distance
     float position = encoder.get_distance();
     
     // Display the big number in ####.# format across top 3 rows
     big_font.display_big_number(position, 0, 0);
     
-    // Enhanced status display with performance indicators (v0.04)
+    // Enhanced status display with performance indicators (v0.05)
     float velocity = encoder.get_velocity();
-    
-    // Update adaptive configuration
-    update_speed_history(&adaptive, velocity);
     
     // Calculate CPU load estimate (simplified)
     float cpu_load = (encoder.get_fifo_overflow_count() + encoder.get_invalid_transition_count()) / 100.0f;
@@ -32,7 +30,6 @@ void display_position_info(LCD_I2C& lcd, QuadratureEncoder& encoder, BigFont& bi
     status.draw_performance_status(encoder.has_performance_warning(), 
                                  encoder.get_fifo_overflow_count(), 
                                  encoder.get_invalid_transition_count());
-    status.draw_update_rate_indicator(adaptive.current_update_rate);
     
     // Update standard status (direction and speed)
     status.update(encoder);
@@ -82,20 +79,12 @@ int main() {
     
     printf("LCD initialized successfully\n");
     
-    // Initialize adaptive configuration (v0.04 enhancement)
-    AdaptiveConfig adaptive = {0};
-    adaptive.current_update_rate = UPDATE_RATE_NORMAL;
-    adaptive.current_preset = PRESET_BALANCED;
-    adaptive.auto_adaptive_enabled = true;
-    adaptive.history_index = 0;
-    adaptive.last_adaptation_time = to_ms_since_boot(get_absolute_time());
+    // Initialize HW-040 rotary encoder for menu control (v0.05)
+    HW040Encoder menu_encoder(MENU_ENCODER_CLK, MENU_ENCODER_DT, MENU_ENCODER_SW);
+    menu_encoder.init();
     
-    // Clear speed history
-    for (int i = 0; i < 8; i++) {
-        adaptive.speed_history[i] = 0.0f;
-    }
-    
-    printf("Adaptive configuration initialized\n");
+    printf("HW-040 menu encoder initialized on pins %d (CLK), %d (DT), %d (SW)\n", 
+           MENU_ENCODER_CLK, MENU_ENCODER_DT, MENU_ENCODER_SW);
     
     // Initialize big font display system
     BigFont big_font(&lcd);
@@ -116,6 +105,12 @@ int main() {
     printf("Encoder initialized on pins %d (A) and %d (B)\n", ENCODER_PIN_A, ENCODER_PIN_B);
     printf("Configuration: Pitch=%.2f, Resolution=%d PPR\n", ENCODER_PITCH, ENCODER_RESOLUTION);
     
+    // Initialize Engineering Menu System (v0.05)
+    EngineeringMenu eng_menu(&lcd, &menu_encoder, &encoder, &status);
+    eng_menu.init();
+    
+    printf("Engineering menu system initialized\n");
+    
     // Display startup message
     lcd.clear();
     lcd.set_cursor(0, 0);
@@ -134,15 +129,34 @@ int main() {
     
     uint32_t last_update = 0;
     int32_t last_position = 0;
+    uint32_t update_rate_ms = 100;  // Default 100ms update rate
     
     printf("Starting main position monitoring loop...\n");
-    printf("Commands: R=reset, S=scan, P=PIO toggle, V=velocity/perf, D=display, C=clear counters, I=version, H=help\n\n");
+    printf("Commands: R=reset, S=scan, P=PIO toggle, V=velocity/perf, D=display, C=clear counters, I=version, H=help\n");
+    printf("Engineering Menu: Triple-click the HW-040 encoder button within 1 second\n\n");
     
     while (true) {
         uint32_t current_time = to_ms_since_boot(get_absolute_time());
         
         // Update encoder reading
         encoder.update();
+        
+        // Update menu encoder and check for triple-click
+        menu_encoder.update();
+        
+        // Check for engineering menu activation (triple-click)
+        if (menu_encoder.check_triple_click() && !eng_menu.is_menu_active()) {
+            printf("Triple-click detected - Activating engineering menu\n");
+            eng_menu.activate_menu();
+        }
+        
+        // Update engineering menu if active
+        if (eng_menu.is_menu_active()) {
+            eng_menu.update();
+            // Skip normal display updates while menu is active
+            sleep_ms(50);  // Reduce loop rate while in menu
+            continue;
+        }
         
         // Check for serial commands (non-blocking)
         int c = getchar_timeout_us(0);
@@ -161,9 +175,11 @@ int main() {
             printf("V - Show velocity & performance info\n");
             printf("D - Toggle display mode\n");
             printf("C - Clear performance counters\n");
-            printf("A - Toggle adaptive mode\n");
+            printf("M - Show menu encoder status\n");
             printf("I - Show version info\n");
-            printf("H - Show this help\n\n");
+            printf("H - Show this help\n");
+            printf("\n=== Engineering Menu ===\n");
+            printf("Triple-click HW-040 encoder to access\n\n");
         } else if (c == 'p' || c == 'P') {
             // Toggle PIO mode
             encoder.enable_pio_mode(!encoder.is_pio_enabled());
@@ -195,34 +211,28 @@ int main() {
             // Clear performance counters
             encoder.reset_performance_counters();
             printf("Performance counters cleared\n");
-        } else if (c == 'a' || c == 'A') {
-            // Toggle adaptive mode
-            adaptive.auto_adaptive_enabled = !adaptive.auto_adaptive_enabled;
-            printf("Adaptive mode: %s\n", adaptive.auto_adaptive_enabled ? "ON" : "OFF");
-            if (!adaptive.auto_adaptive_enabled) {
-                adaptive.current_update_rate = UPDATE_RATE_NORMAL;
-                printf("Update rate reset to normal\n");
-            }
+        } else if (c == 'm' || c == 'M') {
+            // Show menu encoder status
+            printf("\n=== HW-040 Menu Encoder Status ===\n");
+            printf("Status: %s\n", menu_encoder.get_status());
+            printf("Position: %ld\n", menu_encoder.get_position());
+            printf("Button: %s\n", menu_encoder.is_button_pressed() ? "PRESSED" : "Released");
+            printf("Click Count: %lu\n", menu_encoder.get_click_count());
+            printf("Menu Active: %s\n", eng_menu.is_menu_active() ? "YES" : "No");
+            printf("Hint: Triple-click to enter engineering menu\n\n");
         } else if (c == 'd' || c == 'D') {
             // Toggle display mode (future enhancement placeholder)
             printf("Big font display mode (additional modes coming soon)\n");
         }
         
-        // Update display at adaptive interval or when position changes significantly
+        // Update display at regular interval or when position changes significantly
         int32_t current_position = encoder.get_raw_position();
         bool position_changed = (current_position != last_position);
         
-        // v0.04: Adaptive update rate based on speed and performance
-        if (adaptive.auto_adaptive_enabled) {
-            float current_speed = fabsf(encoder.get_velocity());
-            uint32_t fifo_errors = encoder.get_fifo_overflow_count();
-            adaptive.current_update_rate = calculate_optimal_update_rate(current_speed, fifo_errors);
-        }
-        
-        bool time_to_update = (current_time - last_update) >= adaptive.current_update_rate;
+        bool time_to_update = (current_time - last_update) >= update_rate_ms;
         
         if (position_changed || time_to_update) {
-            display_position_info(lcd, encoder, big_font, status, adaptive);
+            display_position_info(lcd, encoder, big_font, status);
             last_update = current_time;
             
             // Print to serial for debugging (only when position changes)
