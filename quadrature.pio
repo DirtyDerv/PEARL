@@ -1,0 +1,58 @@
+; Quadrature encoder PIO program
+; Based on the pi-pico-pio-quadrature-encoder project
+; This program monitors two quadrature encoder signals and counts position
+
+.program quadrature
+
+; X will be our position counter
+; Y will hold the previous state
+
+start:
+    in pins, 2          ; Read both encoder pins
+    mov osr, isr        ; Copy to output shift register for manipulation
+    out x, 2            ; Current state to X
+    
+    ; Calculate direction based on state transition
+    ; Previous state is in Y, current state is in X
+    mov isr, y          ; Get previous state
+    out y, 2            ; Shift it to compare position
+    
+    ; XOR previous and current to detect transitions
+    mov isr, x          ; Current state
+    in y, 2             ; Previous state (shifted)
+    
+    ; Simple quadrature decode: increment/decrement based on transition
+    jmp x!=y, transition ; If states different, we have a transition
+    jmp start           ; Same state, keep monitoring
+    
+transition:
+    ; Determine direction based on the specific transition
+    ; A simple method: if A leads B, increment; if B leads A, decrement
+    mov y, x            ; Store current state as previous for next iteration
+    
+    ; For now, just increment on any transition (will be refined in C code)
+    mov isr, ~null      ; Push increment signal
+    push noblock        ; Send to FIFO
+    
+    jmp start           ; Continue monitoring
+
+% c-sdk {
+static inline void quadrature_program_init(PIO pio, uint sm, uint offset, 
+                                          uint pin_a, uint pin_b) {
+    pio_sm_config c = quadrature_program_get_default_config(offset);
+    
+    // Set up pins
+    sm_config_set_in_pins(&c, pin_a);  // pin_a and pin_a+1 (pin_b)
+    sm_config_set_in_shift(&c, false, false, 32);
+    
+    // Set both pins as inputs with pull-ups
+    pio_gpio_init(pio, pin_a);
+    pio_gpio_init(pio, pin_a + 1);
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
+    gpio_pull_up(pin_a);
+    gpio_pull_up(pin_a + 1);
+    
+    // Configure the state machine
+    pio_sm_init(pio, sm, offset, &c);
+}
+%}
