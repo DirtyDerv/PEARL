@@ -6,6 +6,7 @@
 #include "hw040_encoder.h"
 #include "quadrature_encoder.h"
 #include "status_display.h"
+#include "config_manager.h"
 
 // Engineering Menu System v0.05
 // Comprehensive configuration and diagnostic interface
@@ -17,13 +18,63 @@ enum class MenuState {
     MAIN_MENU,      // Main engineering menu selection
     ENCODER_CONFIG, // Encoder configuration
     DISPLAY_CONFIG, // Display settings
+    CONFIG_MGMT,    // Configuration management
     SYSTEM_INFO,    // System information
     DIAGNOSTICS,    // System diagnostics
     CALIBRATION,    // Calibration routines
     PERFORMANCE,    // Performance monitoring
     FACTORY_RESET,  // Factory reset options
     SAVE_CONFIG,    // Save configuration
-    PASSWORD_CHANGE // Change password
+    PASSWORD_CHANGE, // Change password
+    CAL_SETUP,      // Calibration setup instructions
+    CAL_POSITION1,  // Set first calibration position
+    CAL_MOVE_TO_POS2, // Move to second position
+    CAL_POSITION2,  // Set second calibration position
+    CAL_CALCULATE,  // Calculate and confirm calibration
+    CAL_COMPLETE    // Calibration complete
+};
+
+enum class CalibrationState {
+    INACTIVE,
+    INSTRUCTIONS,   // Show calibration instructions
+    SETUP_POS1,     // Setting up first position
+    ADJUSTING_POS1, // User adjusting to desired position
+    CONFIRM_POS1,   // Confirm first position
+    MOVE_PROMPT,    // Prompt to move to second position
+    SETUP_POS2,     // Setting up second position  
+    ADJUSTING_POS2, // User adjusting to second position
+    CONFIRM_POS2,   // Confirm second position
+    CALCULATING,    // Calculating pitch
+    RESULTS,        // Show calibration results
+    APPLYING,       // Apply new calibration
+    COMPLETE        // Calibration finished
+};
+
+struct CalibrationData {
+    bool active;
+    CalibrationState state;
+    
+    // Position data
+    int32_t encoder_pos1;    // First encoder position
+    float measured_pos1_mm;  // First measured position in mm
+    int32_t encoder_pos2;    // Second encoder position
+    float measured_pos2_mm;  // Second measured position in mm
+    
+    // Calculated values
+    float calculated_pitch;  // Calculated thread pitch
+    float old_pitch;         // Previous pitch for comparison
+    float position_error;    // Error in current measurement
+    
+    // User interface
+    uint32_t blink_timer;    // For blinking prompts
+    bool show_cursor;        // Cursor visibility
+    float temp_value;        // Temporary value during editing
+    uint8_t decimal_place;   // Current decimal place being edited
+    
+    // Velocity control for position adjustment
+    uint32_t last_encoder_time;
+    int32_t last_encoder_pos;
+    float velocity_scale;    // Dynamic velocity scaling
 };
 
 enum class UserMenuItems {
@@ -37,6 +88,7 @@ enum class UserMenuItems {
 enum class MainMenuItems {
     ENCODER_SETTINGS = 0,
     DISPLAY_SETTINGS,
+    CONFIGURATION_MGMT,
     SYSTEM_INFORMATION,
     DIAGNOSTICS_TOOLS,
     CALIBRATION_TOOLS,
@@ -93,6 +145,9 @@ private:
     
     EngineeringConfig config;
     EngineeringConfig default_config;
+    
+    // Calibration system
+    CalibrationData calibration;
     
     // Password entry state
     uint16_t password_entry[4];     // Current password being entered
@@ -156,6 +211,19 @@ private:
     void show_float_editor(const char* name, float* value, float min, float max, float step);
     void show_bool_editor(const char* name, bool* value);
     void show_position_editor(const char* title, int32_t current_pos);
+    
+    // Calibration system methods
+    void start_calibration();
+    void handle_calibration_state(MenuDirection direction);
+    void update_calibration();
+    void draw_calibration_screen();
+    void calculate_dynamic_velocity();
+    void apply_velocity_to_position();
+    void calculate_pitch_from_positions();
+    void show_calibration_results();
+    void apply_calibration_results();
+    void reset_calibration();
+    float edit_position_value(float current_value, int32_t encoder_delta);
 
 public:
     EngineeringMenu(LCD_I2C* display, HW040Encoder* encoder, 

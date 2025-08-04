@@ -42,7 +42,9 @@ private:
 // Initialization step enumeration for tracking progress
 enum class InitStep {
     STARTING = 0,
-    GPIO_INIT = 20,
+    CONFIG_INIT = 10,
+    I2C_SCAN = 20,
+    GPIO_INIT = 30,
     LCD_INIT = 40,
     ENCODER_INIT = 60,
     MENU_INIT = 80,

@@ -50,10 +50,11 @@ add_executable(PEARL
     src/engineering_menu.cpp
     src/splash_screen.cpp
     src/adaptive_config.cpp
+    src/config_manager.cpp
 )
 
 pico_set_program_name(PEARL "PEARL")
-pico_set_program_version(PEARL "0.06")
+pico_set_program_version(PEARL "0.07")
 
 # Generate PIO headers
 pico_generate_pio_header(PEARL ${CMAKE_CURRENT_LIST_DIR}/pio/blink.pio)
@@ -79,6 +80,7 @@ target_link_libraries(PEARL
         hardware_pio
         hardware_gpio
         hardware_timer
+        hardware_flash
         )
 
 pico_add_extra_outputs(PEARL)

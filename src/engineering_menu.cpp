@@ -13,6 +13,7 @@ EngineeringMenu::EngineeringMenu(LCD_I2C* display, HW040Encoder* encoder,
       password_digit_index(0), password_timeout(0), password_attempts(0) {
     load_default_config();
     reset_password_entry();
+    reset_calibration();
 }
 
 bool EngineeringMenu::init() {
@@ -67,6 +68,11 @@ void EngineeringMenu::update() {
     
     uint32_t current_time = time_us_32();
     
+    // Update calibration system if active
+    if (calibration.active) {
+        update_calibration();
+    }
+    
     // Check for password timeout
     if (current_state == MenuState::PASSWORD_ENTRY) {
         if (current_time - password_timeout > (PASSWORD_TIMEOUT_MS * 1000)) {
@@ -75,8 +81,8 @@ void EngineeringMenu::update() {
         }
     }
     
-    // Check for general menu timeout
-    if (current_time - last_activity > (menu_timeout * 1000)) {
+    // Check for general menu timeout (but not during calibration)
+    if (!calibration.active && current_time - last_activity > (menu_timeout * 1000)) {
         exit_menu();
         return;
     }
@@ -401,8 +407,24 @@ void EngineeringMenu::handle_diagnostics(MenuDirection direction) {
 }
 
 void EngineeringMenu::handle_calibration(MenuDirection direction) {
-    if (direction == MenuDirection::BACK) exit_to_main();
-    else draw_submenu();
+    if (direction == MenuDirection::BACK) {
+        if (calibration.active) {
+            reset_calibration();
+        }
+        exit_to_main();
+    } else if (direction == MenuDirection::ENTER) {
+        if (!calibration.active) {
+            start_calibration();
+        } else {
+            handle_calibration_state(direction);
+        }
+    } else {
+        if (calibration.active) {
+            handle_calibration_state(direction);
+        } else {
+            draw_submenu();
+        }
+    }
 }
 
 void EngineeringMenu::handle_performance(MenuDirection direction) {
@@ -447,6 +469,461 @@ void EngineeringMenu::save_config_to_flash() {
 
 void EngineeringMenu::set_config(const EngineeringConfig& new_config) {
     config = new_config;
+}
+
+// ============================================================================
+// CALIBRATION SYSTEM IMPLEMENTATION
+// ============================================================================
+
+void EngineeringMenu::start_calibration() {
+    calibration.active = true;
+    calibration.state = CalibrationState::INSTRUCTIONS;
+    calibration.blink_timer = 0;
+    calibration.show_cursor = true;
+    calibration.velocity_scale = 1.0f;
+    calibration.last_encoder_time = to_ms_since_boot(get_absolute_time());
+    calibration.last_encoder_pos = menu_encoder->get_position();
+    
+    // Store current pitch for comparison
+    calibration.old_pitch = config.encoder_scale_factor;
+    
+    lcd->clear();
+    draw_calibration_screen();
+}
+
+void EngineeringMenu::handle_calibration_state(MenuDirection direction) {
+    switch (calibration.state) {
+        case CalibrationState::INSTRUCTIONS:
+            if (direction == MenuDirection::ENTER) {
+                calibration.state = CalibrationState::SETUP_POS1;
+            }
+            break;
+            
+        case CalibrationState::SETUP_POS1:
+            if (direction == MenuDirection::ENTER) {
+                calibration.state = CalibrationState::ADJUSTING_POS1;
+                calibration.encoder_pos1 = main_encoder->get_raw_position();
+            }
+            break;
+            
+        case CalibrationState::ADJUSTING_POS1:
+            if (direction == MenuDirection::ENTER) {
+                calibration.state = CalibrationState::CONFIRM_POS1;
+                calibration.measured_pos1_mm = 0.0f; // Start with 0, user will adjust
+                calibration.decimal_place = 0;
+            }
+            break;
+            
+        case CalibrationState::CONFIRM_POS1:
+            if (direction == MenuDirection::ENTER) {
+                calibration.state = CalibrationState::MOVE_PROMPT;
+            } else if (direction == MenuDirection::UP || direction == MenuDirection::DOWN) {
+                int32_t delta = (direction == MenuDirection::UP) ? 1 : -1;
+                calibration.measured_pos1_mm = edit_position_value(calibration.measured_pos1_mm, delta);
+            } else if (direction == MenuDirection::UP) { // Use UP as next digit
+                calibration.decimal_place = (calibration.decimal_place + 1) % 3; // 0, 1, 2 decimal places
+            }
+            break;
+            
+        case CalibrationState::MOVE_PROMPT:
+            if (direction == MenuDirection::ENTER) {
+                calibration.state = CalibrationState::SETUP_POS2;
+            }
+            break;
+            
+        case CalibrationState::SETUP_POS2:
+            if (direction == MenuDirection::ENTER) {
+                calibration.state = CalibrationState::ADJUSTING_POS2;
+                calibration.encoder_pos2 = main_encoder->get_raw_position();
+            }
+            break;
+            
+        case CalibrationState::ADJUSTING_POS2:
+            if (direction == MenuDirection::ENTER) {
+                calibration.state = CalibrationState::CONFIRM_POS2;
+                calibration.measured_pos2_mm = calibration.measured_pos1_mm + 100.0f; // Default 100mm away
+                calibration.decimal_place = 0;
+            }
+            break;
+            
+        case CalibrationState::CONFIRM_POS2:
+            if (direction == MenuDirection::ENTER) {
+                // Check minimum distance
+                float distance = fabs(calibration.measured_pos2_mm - calibration.measured_pos1_mm);
+                if (distance >= 100.0f) {
+                    calibration.state = CalibrationState::CALCULATING;
+                    calculate_pitch_from_positions();
+                } else {
+                    // Show error - need at least 100mm separation
+                    lcd->clear();
+                    lcd->set_cursor(0, 0);
+                    lcd->print("ERROR: Need 100mm");
+                    lcd->set_cursor(0, 1);
+                    lcd->print("minimum distance");
+                    sleep_ms(2000);
+                }
+            } else if (direction == MenuDirection::UP || direction == MenuDirection::DOWN) {
+                int32_t delta = (direction == MenuDirection::UP) ? 1 : -1;
+                calibration.measured_pos2_mm = edit_position_value(calibration.measured_pos2_mm, delta);
+            } else if (direction == MenuDirection::UP) { // Use UP as next digit
+                calibration.decimal_place = (calibration.decimal_place + 1) % 3;
+            }
+            break;
+            
+        case CalibrationState::RESULTS:
+            if (direction == MenuDirection::ENTER) {
+                calibration.state = CalibrationState::APPLYING;
+                apply_calibration_results();
+            } else if (direction == MenuDirection::BACK) {
+                reset_calibration();
+                exit_to_main();
+            }
+            break;
+            
+        case CalibrationState::COMPLETE:
+            if (direction == MenuDirection::ENTER || direction == MenuDirection::BACK) {
+                reset_calibration();
+                exit_to_main();
+            }
+            break;
+            
+        default:
+            break;
+    }
+    
+    draw_calibration_screen();
+}
+
+void EngineeringMenu::update_calibration() {
+    if (!calibration.active) return;
+    
+    uint32_t current_time = to_ms_since_boot(get_absolute_time());
+    
+    // Update blink timer for cursor
+    if (current_time - calibration.blink_timer > 500) {
+        calibration.show_cursor = !calibration.show_cursor;
+        calibration.blink_timer = current_time;
+    }
+    
+    // Handle dynamic velocity during position adjustment
+    if (calibration.state == CalibrationState::ADJUSTING_POS1 || 
+        calibration.state == CalibrationState::ADJUSTING_POS2) {
+        calculate_dynamic_velocity();
+        apply_velocity_to_position();
+    }
+}
+
+void EngineeringMenu::calculate_dynamic_velocity() {
+    uint32_t current_time = to_ms_since_boot(get_absolute_time());
+    int32_t current_encoder_pos = menu_encoder->get_position();
+    
+    uint32_t time_delta = current_time - calibration.last_encoder_time;
+    int32_t pos_delta = current_encoder_pos - calibration.last_encoder_pos;
+    
+    if (time_delta > 50) { // Update every 50ms
+        // Calculate velocity (steps per second)
+        float velocity = fabs((float)pos_delta * 1000.0f / (float)time_delta);
+        
+        // Dynamic scaling based on velocity
+        if (velocity > 20.0f) {
+            calibration.velocity_scale = 10.0f; // Fast movement
+        } else if (velocity > 10.0f) {
+            calibration.velocity_scale = 5.0f;  // Medium movement
+        } else if (velocity > 5.0f) {
+            calibration.velocity_scale = 2.0f;  // Slow movement
+        } else {
+            calibration.velocity_scale = 1.0f;  // Precision movement
+        }
+        
+        calibration.last_encoder_time = current_time;
+        calibration.last_encoder_pos = current_encoder_pos;
+    }
+}
+
+void EngineeringMenu::apply_velocity_to_position() {
+    // This would be used if we had motor control
+    // For now, we just simulate position changes based on encoder
+    // In a real implementation, this would control stepper motors
+    // or other actuators to move the backgauge
+}
+
+void EngineeringMenu::calculate_pitch_from_positions() {
+    // Calculate the actual distance moved
+    float actual_distance = calibration.measured_pos2_mm - calibration.measured_pos1_mm;
+    
+    // Calculate encoder counts difference
+    int32_t encoder_counts = calibration.encoder_pos2 - calibration.encoder_pos1;
+    
+    if (encoder_counts != 0) {
+        // Calculate pitch (distance per encoder count)
+        calibration.calculated_pitch = actual_distance / (float)abs(encoder_counts);
+        
+        // Calculate position error with current settings
+        float current_calculated_distance = (float)abs(encoder_counts) * calibration.old_pitch;
+        calibration.position_error = current_calculated_distance - actual_distance;
+        
+        calibration.state = CalibrationState::RESULTS;
+    } else {
+        // Error - no movement detected
+        lcd->clear();
+        lcd->set_cursor(0, 0);
+        lcd->print("ERROR: No movement");
+        lcd->set_cursor(0, 1);
+        lcd->print("detected!");
+        sleep_ms(2000);
+        calibration.state = CalibrationState::MOVE_PROMPT;
+    }
+}
+
+void EngineeringMenu::draw_calibration_screen() {
+    lcd->clear();
+    
+    switch (calibration.state) {
+        case CalibrationState::INSTRUCTIONS:
+            lcd->set_cursor(0, 0);
+            lcd->print("LEADSCREW CALIB");
+            lcd->set_cursor(0, 1);
+            lcd->print("Press OK to start");
+            break;
+            
+        case CalibrationState::SETUP_POS1:
+            lcd->set_cursor(0, 0);
+            lcd->print("STEP 1: Position");
+            lcd->set_cursor(0, 1);
+            lcd->print("Press OK when set");
+            break;
+            
+        case CalibrationState::ADJUSTING_POS1:
+            lcd->set_cursor(0, 0);
+            lcd->print("Use HW040 to move");
+            lcd->set_cursor(0, 1);
+            char scale_str[20];
+            sprintf(scale_str, "Scale: %.1fx", calibration.velocity_scale);
+            lcd->print(scale_str);
+            
+            // Show current encoder position
+            lcd->set_cursor(0, 2);
+            char pos_str[20];
+            sprintf(pos_str, "Pos: %ld", main_encoder->get_raw_position());
+            lcd->print(pos_str);
+            
+            lcd->set_cursor(0, 3);
+            lcd->print("Press OK when done");
+            break;
+            
+        case CalibrationState::CONFIRM_POS1:
+            lcd->set_cursor(0, 0);
+            lcd->print("Enter position:");
+            lcd->set_cursor(0, 1);
+            char pos1_str[20];
+            sprintf(pos1_str, "%.3f mm", calibration.measured_pos1_mm);
+            lcd->print(pos1_str);
+            
+            // Show cursor at decimal place
+            if (calibration.show_cursor) {
+                int cursor_pos = strlen(pos1_str) - 4 + calibration.decimal_place;
+                if (calibration.decimal_place == 0) cursor_pos = strlen(pos1_str) - 7; // Before decimal
+                lcd->set_cursor(cursor_pos, 1);
+                lcd->print("_");
+            }
+            
+            lcd->set_cursor(0, 2);
+            lcd->print("UP/DN: adjust");
+            lcd->set_cursor(0, 3);
+            lcd->print("RIGHT: next digit");
+            break;
+            
+        case CalibrationState::MOVE_PROMPT:
+            lcd->set_cursor(0, 0);
+            lcd->print("STEP 2: Move to");
+            lcd->set_cursor(0, 1);
+            lcd->print("new position");
+            lcd->set_cursor(0, 2);
+            lcd->print("(100mm+ away)");
+            lcd->set_cursor(0, 3);
+            lcd->print("Press OK when set");
+            break;
+            
+        case CalibrationState::SETUP_POS2: {
+            lcd->set_cursor(0, 0);
+            lcd->print("Ready for pos 2?");
+            lcd->set_cursor(0, 1);
+            char distance_str[20];
+            int32_t encoder_diff = abs(main_encoder->get_raw_position() - calibration.encoder_pos1);
+            sprintf(distance_str, "Moved: %ld counts", encoder_diff);
+            lcd->print(distance_str);
+            lcd->set_cursor(0, 2);
+            lcd->print("Press OK to set");
+            break;
+        }
+            
+        case CalibrationState::ADJUSTING_POS2: {
+            lcd->set_cursor(0, 0);
+            lcd->print("Final position");
+            lcd->set_cursor(0, 1);
+            char scale_str[20];
+            sprintf(scale_str, "Scale: %.1fx", calibration.velocity_scale);
+            lcd->print(scale_str);
+            
+            lcd->set_cursor(0, 2);
+            char pos_str[20];
+            sprintf(pos_str, "Pos: %ld", main_encoder->get_raw_position());
+            lcd->print(pos_str);
+            
+            lcd->set_cursor(0, 3);
+            lcd->print("Press OK when done");
+            break;
+        }
+            
+        case CalibrationState::CONFIRM_POS2: {
+            lcd->set_cursor(0, 0);
+            lcd->print("Enter position:");
+            lcd->set_cursor(0, 1);
+            char pos2_str[20];
+            sprintf(pos2_str, "%.3f mm", calibration.measured_pos2_mm);
+            lcd->print(pos2_str);
+            
+            if (calibration.show_cursor) {
+                int cursor_pos = strlen(pos2_str) - 4 + calibration.decimal_place;
+                if (calibration.decimal_place == 0) cursor_pos = strlen(pos2_str) - 7;
+                lcd->set_cursor(cursor_pos, 1);
+                lcd->print("_");
+            }
+            
+            lcd->set_cursor(0, 2);
+            float distance = fabs(calibration.measured_pos2_mm - calibration.measured_pos1_mm);
+            char dist_str[20];
+            sprintf(dist_str, "Distance: %.1f mm", distance);
+            lcd->print(dist_str);
+            
+            lcd->set_cursor(0, 3);
+            if (distance >= 100.0f) {
+                lcd->print("OK to calculate");
+            } else {
+                lcd->print("Need 100mm min!");
+            }
+            break;
+        }
+            
+        case CalibrationState::CALCULATING: {
+            lcd->set_cursor(0, 0);
+            lcd->print("Calculating...");
+            lcd->set_cursor(0, 1);
+            lcd->print("Please wait");
+            break;
+        }
+            
+        case CalibrationState::RESULTS: {
+            show_calibration_results();
+            break;
+        }
+            
+        case CalibrationState::APPLYING: {
+            lcd->set_cursor(0, 0);
+            lcd->print("Applying new");
+            lcd->set_cursor(0, 1);
+            lcd->print("calibration...");
+            break;
+        }
+            
+        case CalibrationState::COMPLETE: {
+            lcd->set_cursor(0, 0);
+            lcd->print("Calibration");
+            lcd->set_cursor(0, 1);
+            lcd->print("Complete!");
+            lcd->set_cursor(0, 2);
+            char new_pitch_str[20];
+            sprintf(new_pitch_str, "Pitch: %.4f", calibration.calculated_pitch);
+            lcd->print(new_pitch_str);
+            lcd->set_cursor(0, 3);
+            lcd->print("Press OK to exit");
+            break;
+        }
+    }
+}
+
+void EngineeringMenu::show_calibration_results() {
+    lcd->clear();
+    lcd->set_cursor(0, 0);
+    lcd->print("CALIBRATION RESULTS");
+    
+    lcd->set_cursor(0, 1);
+    char old_str[20];
+    sprintf(old_str, "Old: %.4f", calibration.old_pitch);
+    lcd->print(old_str);
+    
+    lcd->set_cursor(0, 2);
+    char new_str[20];
+    sprintf(new_str, "New: %.4f", calibration.calculated_pitch);
+    lcd->print(new_str);
+    
+    lcd->set_cursor(0, 3);
+    char error_str[20];
+    sprintf(error_str, "Err: %.2fmm", calibration.position_error);
+    lcd->print(error_str);
+    
+    // Show percentage improvement
+    float improvement = fabs(calibration.position_error / (calibration.measured_pos2_mm - calibration.measured_pos1_mm)) * 100.0f;
+    
+    sleep_ms(3000); // Show results for 3 seconds
+    
+    lcd->clear();
+    lcd->set_cursor(0, 0);
+    lcd->print("Improvement:");
+    lcd->set_cursor(0, 1);
+    char imp_str[20];
+    sprintf(imp_str, "%.1f%% error", improvement);
+    lcd->print(imp_str);
+    lcd->set_cursor(0, 2);
+    lcd->print("Apply changes?");
+    lcd->set_cursor(0, 3);
+    lcd->print("OK=Yes BACK=No");
+}
+
+void EngineeringMenu::apply_calibration_results() {
+    // Update the encoder scale factor with the new pitch
+    config.encoder_scale_factor = calibration.calculated_pitch;
+    
+    // Save configuration to flash
+    save_config_to_flash();
+    
+    // Apply the new configuration
+    apply_config();
+    
+    calibration.state = CalibrationState::COMPLETE;
+    
+    // Brief confirmation
+    lcd->clear();
+    lcd->set_cursor(0, 0);
+    lcd->print("Calibration");
+    lcd->set_cursor(0, 1);
+    lcd->print("Applied!");
+    sleep_ms(1500);
+}
+
+void EngineeringMenu::reset_calibration() {
+    calibration.active = false;
+    calibration.state = CalibrationState::INACTIVE;
+    calibration.encoder_pos1 = 0;
+    calibration.encoder_pos2 = 0;
+    calibration.measured_pos1_mm = 0.0f;
+    calibration.measured_pos2_mm = 0.0f;
+    calibration.calculated_pitch = 0.0f;
+    calibration.position_error = 0.0f;
+    calibration.velocity_scale = 1.0f;
+}
+
+float EngineeringMenu::edit_position_value(float current_value, int32_t encoder_delta) {
+    float step_size;
+    
+    switch (calibration.decimal_place) {
+        case 0: step_size = 10.0f; break;    // 10mm steps
+        case 1: step_size = 1.0f; break;     // 1mm steps  
+        case 2: step_size = 0.1f; break;     // 0.1mm steps
+        default: step_size = 0.01f; break;   // 0.01mm steps
+    }
+    
+    return current_value + (encoder_delta * step_size);
 }
 
 void EngineeringMenu::factory_reset() {

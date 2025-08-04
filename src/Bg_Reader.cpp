@@ -12,6 +12,7 @@
 #include "hw040_encoder.h"
 #include "engineering_menu.h"
 #include "splash_screen.h"
+#include "config_manager.h"
 
 void display_position_info(LCD_I2C& lcd, QuadratureEncoder& encoder, BigFont& big_font, StatusDisplay& status) {
     // Get current position as distance
@@ -50,6 +51,16 @@ int main() {
     // Give USB time to initialize for serial output
     sleep_ms(2000);
     
+    // Initialize configuration manager first
+    printf("Initializing configuration system...\n");
+    if (!g_config_manager.init()) {
+        printf("WARNING: Configuration system failed to initialize, using defaults\n");
+    } else {
+        printf("Configuration system initialized successfully\n");
+        printf("Encoder resolution: %d, Thread pitch: %.3f\n", 
+               GET_ENCODER_RESOLUTION(), GET_THREAD_PITCH());
+    }
+    
     // Initialize I2C for LCD first (needed for splash screen)
     i2c_init(i2c0, I2C_FREQ);
     gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
@@ -69,13 +80,17 @@ int main() {
     
     printf("LCD initialized successfully\n");
     
-    // Initialize and show splash screen
+    // Initialize splash screen (if enabled in config)
     SplashScreen splash(&lcd);
-    splash.show_startup();
-    splash.show_version_info();
-    
-    // Now continue with detailed initialization with progress feedback
-    splash.show_progress("I2C Bus Scan", static_cast<uint8_t>(InitStep::STARTING));
+    if (g_config_manager.get_config()->splash_enabled) {
+        splash.show_startup();
+        splash.show_version_info();
+        
+        // Now continue with detailed initialization with progress feedback
+        splash.show_progress("Config Loaded", static_cast<uint8_t>(InitStep::CONFIG_INIT));
+        sleep_ms(500);
+        splash.show_progress("I2C Bus Scan", static_cast<uint8_t>(InitStep::I2C_SCAN));
+    }
     
     // Scan I2C bus for devices
     I2CScanner scanner(i2c0);
@@ -84,19 +99,28 @@ int main() {
     // Test LCD address specifically
     if (scanner.test_address(LCD_ADDR)) {
         printf("LCD found at address 0x%02X ✓\n", LCD_ADDR);
-        splash.show_hardware_status("LCD", true);
+        if (g_config_manager.get_config()->splash_enabled) {
+            splash.show_hardware_status("LCD", true);
+        }
     } else {
         printf("WARNING: No device found at LCD address 0x%02X\n", LCD_ADDR);
         printf("Check wiring or try different address (common: 0x27, 0x3F)\n");
-        splash.show_hardware_status("LCD", false);
+        if (g_config_manager.get_config()->splash_enabled) {
+            splash.show_hardware_status("LCD", false);
+        }
     }
     
-    splash.show_progress("GPIO Setup", static_cast<uint8_t>(InitStep::GPIO_INIT));
+    if (g_config_manager.get_config()->splash_enabled) {
+        splash.show_progress("GPIO Setup", static_cast<uint8_t>(InitStep::GPIO_INIT));
+    }
     
     printf("Attempting LCD initialization...\n");
     lcd.init();
     lcd.backlight_on();
-    splash.show_progress("GPIO Setup", static_cast<uint8_t>(InitStep::GPIO_INIT));
+    
+    if (g_config_manager.get_config()->splash_enabled) {
+        splash.show_progress("GPIO Setup", static_cast<uint8_t>(InitStep::GPIO_INIT));
+    }
     
     // Initialize HW-040 rotary encoder for menu control (v0.05)
     HW040Encoder menu_encoder(MENU_ENCODER_CLK, MENU_ENCODER_DT, MENU_ENCODER_SW);
@@ -105,8 +129,10 @@ int main() {
     printf("HW-040 menu encoder initialized on pins %d (CLK), %d (DT), %d (SW)\n", 
            MENU_ENCODER_CLK, MENU_ENCODER_DT, MENU_ENCODER_SW);
     
-    splash.show_hardware_status("Menu Encoder", true);
-    splash.show_progress("Display Setup", static_cast<uint8_t>(InitStep::LCD_INIT));
+    if (g_config_manager.get_config()->splash_enabled) {
+        splash.show_hardware_status("Menu Encoder", true);
+        splash.show_progress("Display Setup", static_cast<uint8_t>(InitStep::LCD_INIT));
+    }
     
     // Initialize big font display system
     BigFont big_font(&lcd);
@@ -118,34 +144,43 @@ int main() {
     status.init();
     
     printf("Big font and status display initialized\n");
-    splash.show_hardware_status("Display Sys", true);
-    splash.show_progress("Encoder Init", static_cast<uint8_t>(InitStep::ENCODER_INIT));
     
-    // Initialize Quadrature Encoder
+    if (g_config_manager.get_config()->splash_enabled) {
+        splash.show_hardware_status("Display Sys", true);
+        splash.show_progress("Encoder Init", static_cast<uint8_t>(InitStep::ENCODER_INIT));
+    }
+    
+    // Initialize Quadrature Encoder with configuration values
     QuadratureEncoder encoder(pio0, 0, ENCODER_PIN_A, ENCODER_PIN_B, 
-                             ENCODER_PITCH, ENCODER_RESOLUTION);
+                             GET_THREAD_PITCH(), GET_ENCODER_RESOLUTION(), GET_PIO_ENABLED());
     encoder.init();
     
     printf("Encoder initialized on pins %d (A) and %d (B)\n", ENCODER_PIN_A, ENCODER_PIN_B);
-    printf("Configuration: Pitch=%.2f, Resolution=%d PPR\n", ENCODER_PITCH, ENCODER_RESOLUTION);
+    printf("Configuration: Pitch=%.3f, Resolution=%d PPR, PIO=%s\n", 
+           GET_THREAD_PITCH(), GET_ENCODER_RESOLUTION(), GET_PIO_ENABLED() ? "ON" : "OFF");
     
-    splash.show_hardware_status("Main Encoder", true);
-    splash.show_progress("Menu System", static_cast<uint8_t>(InitStep::MENU_INIT));
+    if (g_config_manager.get_config()->splash_enabled) {
+        splash.show_hardware_status("Main Encoder", true);
+        splash.show_progress("Menu System", static_cast<uint8_t>(InitStep::MENU_INIT));
+    }
     
     // Initialize Engineering Menu System (v0.05)
     EngineeringMenu eng_menu(&lcd, &menu_encoder, &encoder, &status);
     eng_menu.init();
     
     printf("Engineering menu system initialized\n");
-    splash.show_hardware_status("Menu System", true);
-    splash.show_progress("Startup Complete", static_cast<uint8_t>(InitStep::COMPLETE));
     
-    // Show ready screen
-    splash.show_ready();
+    if (g_config_manager.get_config()->splash_enabled) {
+        splash.show_hardware_status("Menu System", true);
+        splash.show_progress("Startup Complete", static_cast<uint8_t>(InitStep::COMPLETE));
+        
+        // Show ready screen
+        splash.show_ready();
+    }
     
     uint32_t last_update = 0;
     int32_t last_position = 0;
-    uint32_t update_rate_ms = 100;  // Default 100ms update rate
+    uint32_t update_rate_ms = GET_UPDATE_RATE();  // Use configured update rate
     
     printf("Starting main position monitoring loop...\n");
     printf("Commands: R=reset, S=scan, P=PIO toggle, V=velocity/perf, D=display, C=clear counters, I=version, H=help\n");
@@ -153,6 +188,9 @@ int main() {
     
     while (true) {
         uint32_t current_time = to_ms_since_boot(get_absolute_time());
+        
+        // Update configuration manager (handles auto-save)
+        g_config_manager.update();
         
         // Update encoder reading
         encoder.update();
