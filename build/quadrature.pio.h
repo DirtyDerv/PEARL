@@ -13,23 +13,28 @@
 // ---------- //
 
 #define quadrature_wrap_target 0
-#define quadrature_wrap 4
+#define quadrature_wrap 9
 #define quadrature_pio_version 0
 
 static const uint16_t quadrature_program_instructions[] = {
             //     .wrap_target
     0x4002, //  0: in     pins, 2
-    0x8000, //  1: push   noblock
-    0xa025, //  2: mov    x, status
-    0x0020, //  3: jmp    !x, 0
-    0xa142, //  4: nop                           [1]
+    0xa026, //  1: mov    x, isr
+    0xa047, //  2: mov    y, osr
+    0xa0e1, //  3: mov    osr, x
+    0x00a6, //  4: jmp    x != y, 6
+    0x0007, //  5: jmp    7
+    0x8000, //  6: push   noblock
+    0xa025, //  7: mov    x, status
+    0x0020, //  8: jmp    !x, 0
+    0xa142, //  9: nop                           [1]
             //     .wrap
 };
 
 #if !PICO_NO_HARDWARE
 static const struct pio_program quadrature_program = {
     .instructions = quadrature_program_instructions,
-    .length = 5,
+    .length = 10,
     .origin = -1,
     .pio_version = quadrature_pio_version,
 #if PICO_PIO_VERSION > 0

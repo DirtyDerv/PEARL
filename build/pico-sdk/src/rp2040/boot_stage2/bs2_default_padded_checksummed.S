@@ -1,4 +1,4 @@
-// Padded and checksummed version of: C:/Users/sean/OneDrive/Documents/Pico Projects/Bg Reader/Bg_Reader/build/pico-sdk/src/rp2040/boot_stage2/bs2_default.bin
+// Padded and checksummed version of: C:/Users/woody/OneDrive/Documents/VSCODE/pico-projects/PEARL/build/pico-sdk/src/rp2040/boot_stage2/bs2_default.bin
 
 .cpu cortex-m0plus
 .thumb
