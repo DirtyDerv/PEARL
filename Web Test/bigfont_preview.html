@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Big Font 7-Segment LCD Preview</title>
+  <style>
+    body { font-family: monospace; background: #222; color: #eee; }
+    .lcd {
+      display: inline-block;
+      background: #222;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px #000a;
+    }
+    .row { height: 1.2em; }
+    .seg {
+      display: inline-block;
+      width: 1.2em;
+      text-align: center;
+      font-size: 2em;
+      color: #0f0;
+    }
+    input { font-size: 1.2em; margin: 1em 0; }
+  </style>
+</head>
+<body>
+  <h2>Big Font 7-Segment LCD Preview (SVG)</h2>
+  <input id="numInput" value="-12.34" maxlength="8" />
+  <div class="lcd" id="lcd"></div>
+  <script>
+    // Segment map: [A, B, C, D, E, F, G]
+    const digitSegments = {
+      '0': [1,1,1,1,1,1,0],
+      '1': [0,1,1,0,0,0,0],
+      '2': [1,1,0,1,1,0,1],
+      '3': [1,1,1,1,0,0,1],
+      '4': [0,1,1,0,0,1,1],
+      '5': [1,0,1,1,0,1,1],
+      '6': [1,0,1,1,1,1,1],
+      '7': [1,1,1,0,0,0,0],
+      '8': [1,1,1,1,1,1,1],
+      '9': [1,1,1,1,0,1,1],
+      '-': [0,0,0,0,0,0,1],
+      '.': [0,0,0,0,0,0,0]
+    };
+    function drawDigit(segments, x, y) {
+      // Each segment is a polygon (A-G)
+      const segs = [
+        segments[0] ? `<polygon points='5,2 25,2 21,6 9,6' />` : '', // A
+        segments[1] ? `<polygon points='25,2 29,6 29,24 25,20 21,16 21,6' />` : '', // B
+        segments[2] ? `<polygon points='25,22 29,26 29,44 25,40 21,36 21,26' />` : '', // C
+        segments[3] ? `<polygon points='5,42 25,42 21,38 9,38' />` : '', // D
+        segments[4] ? `<polygon points='1,22 5,26 5,44 9,40 9,26 5,22' />` : '', // E
+        segments[5] ? `<polygon points='1,6 5,2 9,6 9,16 5,20 1,16' />` : '', // F
+        segments[6] ? `<polygon points='5,22 25,22 21,26 9,26' />` : '' // G
+      ];
+      return `<g transform='translate(${x},${y})' fill='#0f0' stroke='#060' stroke-width='1'>${segs.join('')}</g>`;
+    }
+    function drawDot(x, y) {
+      return `<circle cx='17' cy='46' r='3' fill='#0f0' />`;
+    }
+    function renderBigFont(numStr) {
+      let svg = `<svg width='${numStr.length*36}' height='50'>`;
+      let x = 0;
+      for (let c of numStr) {
+        if (c === '.') {
+          svg += drawDot(x, 0);
+        } else {
+          let segs = digitSegments[c] || [0,0,0,0,0,0,0];
+          svg += drawDigit(segs, x, 0);
+        }
+        x += 36;
+      }
+      svg += '</svg>';
+      return svg;
+    }
+    function update() {
+      const val = document.getElementById('numInput').value;
+      document.getElementById('lcd').innerHTML = renderBigFont(val);
+    }
+    document.getElementById('numInput').addEventListener('input', update);
+    update();
+  </script>
+</body>
+</html>

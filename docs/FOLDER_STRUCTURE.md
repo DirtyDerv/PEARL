@@ -6,20 +6,25 @@ This document describes the clean, professional folder structure implemented for
 
 ## Directory Structure
 
+
 ```
 PEARL/
-├── src/                    # Source code files (.cpp)
-├── include/                # Header files (.h)
-├── pio/                    # PIO assembly files (.pio)
-├── scripts/                # Build and utility scripts
-├── docs/                   # Documentation files
-├── build/                  # Build output directory (generated)
-├── .vscode/                # VS Code configuration
-├── .git/                   # Git repository data
-├── CMakeLists.txt          # CMake build configuration
-├── pico_sdk_import.cmake   # Pico SDK integration
-├── .gitignore             # Git ignore rules
-└── README.md              # Main project documentation
+├── src/                        # Source code files (.cpp)
+├── include/                    # Header files (.h)
+├── pio/                        # PIO assembly files (.pio)
+├── scripts/                    # Build and utility scripts
+├── docs/                       # Documentation files
+│   ├── electronics/            # Electronics docs, guides, block diagrams, schematic
+│   │   ├── schematic/          # KiCad schematic files
+│   │   └── ...                 # Block diagrams, protection guides, walkthroughs
+│   └── ...                     # Other documentation
+├── build/                      # Build output directory (generated)
+├── .vscode/                    # VS Code configuration
+├── .git/                       # Git repository data
+├── CMakeLists.txt              # CMake build configuration
+├── pico_sdk_import.cmake       # Pico SDK integration
+├── .gitignore                  # Git ignore rules
+└── README.md                   # Main project documentation
 ```
 
 ## Directory Details
@@ -63,12 +68,19 @@ Contains build and utility scripts:
 - `increment_version.sh` - Bash version incrementing
 
 ### `docs/` - Documentation
+
 Contains project documentation:
 - `README.md` - Main project overview
 - `PROJECT_SUMMARY.md` - Detailed project specifications
 - `BRANCHING_STRATEGY.md` - Git workflow documentation
 - `VERSION_MANAGEMENT.md` - Version control procedures
 - `FOLDER_STRUCTURE.md` - This file
+- `electronics/` - All electronics documentation, block diagrams, protection guides, and schematic files
+   - `BLOCK_DIAGRAM.md`, `BLOCK_DIAGRAM_PROTECTED.md` - System block diagrams
+   - `PROTECTION_GUIDE.md` - Industrial protection guide
+   - `SCHEMATIC_WALKTHROUGH.md` - Schematic build walkthrough
+   - `KiCad_Getting_Started.md` - KiCad beginner's guide
+   - `schematic/` - KiCad schematic files (e.g., `PEARL_Schematic.kicad_sch`)
 
 ### `build/` - Build Output
 Generated directory containing:

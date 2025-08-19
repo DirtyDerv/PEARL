@@ -24,7 +24,10 @@ private:
     
     // Triple-click detection for menu access
     static const uint32_t CLICK_TIMEOUT_US = 1000000;  // 1 second
-    static const uint32_t DEBOUNCE_TIME_US = 50000;    // 50ms debounce
+    static const uint32_t DEBOUNCE_TIME_US = 50000;    // 50ms debounce (button)
+    static const uint32_t ROTARY_DEBOUNCE_US = 2000;   // 2ms debounce (rotary)
+
+    volatile uint32_t last_rotary_time;
     
     // Interrupt handlers
     static void gpio_irq_handler(uint gpio, uint32_t events);

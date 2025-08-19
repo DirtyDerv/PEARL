@@ -2,8 +2,8 @@
 #define CONFIG_H
 
 // Pin Configuration
-#define I2C_SDA 8
-#define I2C_SCL 9
+#define I2C_SDA 4
+#define I2C_SCL 5
 #define ENCODER_PIN_A 10
 #define ENCODER_PIN_B 11
 
@@ -15,7 +15,7 @@
 // System Configuration
 #define ENCODER_PITCH 1.0f       // Thread pitch (units per revolution)
 #define ENCODER_RESOLUTION 500   // Pulses per revolution
-#define UPDATE_INTERVAL_MS 50    // Display update rate (20Hz)
+#define UPDATE_INTERVAL_MS 10    // Display update rate (100Hz)
 
 // LCD Configuration
 #define LCD_ADDR 0x27           // I2C address of LCD (try 0x3F if this doesn't work)

@@ -1,12 +1,14 @@
 # PEARL v0.07 Installation Guide
 
 ## Table of Contents
-1. [Hardware Requirements](#hardware-requirements)
-2. [Wiring Diagram](#wiring-diagram)
-3. [Software Installation](#software-installation)
-4. [Initial Setup](#initial-setup)
-5. [Verification](#verification)
-6. [Troubleshooting](#troubleshooting)
+1. [Quick Start](QUICK_START.md)
+2. [Hardware Requirements](#hardware-requirements)
+3. [Wiring Diagram](#wiring-diagram)
+4. [Software Installation](#software-installation)
+5. [Initial Setup](#initial-setup)
+6. [Verification](#verification)
+7. [Troubleshooting](#troubleshooting)
+8. [Screenshots](SCREENSHOTS.md)
 
 ## Hardware Requirements
 
@@ -217,6 +219,7 @@ make -j4
 
 ## Initial Setup
 
+
 ### 1. Power-On Sequence
 1. Connect all wiring according to diagram
 2. Connect USB cable to Pico
@@ -231,13 +234,16 @@ The system will boot with default settings:
 - **I2C Address**: 0x27
 
 ### 3. Access Engineering Menu
-1. **Long Press** the HW-040 encoder button (2+ seconds)
+1. **Triple-click** the HW-040 encoder button rapidly
 2. Enter password using encoder:
    - Rotate to select numbers (0-9)
    - Press to confirm each digit
    - Default password: `1234`
+   - Use show/hide toggle for password visibility
+   - Reset to default available in Security menu
 3. Navigate menu with encoder rotation
 4. Press to select options
+5. Menu auto-exits after inactivity for security
 
 ### 4. Essential Configuration
 
@@ -258,6 +264,7 @@ The system will boot with default settings:
 
 ## Verification
 
+
 ### 1. Display Test
 - **LCD should show**: Position, velocity, and status
 - **Characters should be**: Clear and properly aligned
@@ -269,14 +276,15 @@ The system will boot with default settings:
 - **Resolution should match**: Expected counts per revolution
 
 ### 3. Menu Navigation Test
-- **Long press**: Should enter engineering menu
+- **Triple-click**: Should enter engineer menu (password required)
 - **Rotation**: Should navigate menu items
 - **Press**: Should select items
 - **Back navigation**: Should work properly
 
 ### 4. Calibration Verification
-1. Move to known position
-2. Reset position to zero
+1. Access engineer menu and run calibration (step-by-step, review/undo before saving)
+2. Move to known position
+2. Reset position to 100mm
 3. Move exactly 100mm
 4. Reading should show 100.000mm ±0.1mm
 
@@ -358,4 +366,8 @@ The system will boot with default settings:
 
 ---
 
+
 **Next Steps**: After successful installation, proceed to the [User Manual](USER_MANUAL.md) for complete operating instructions.
+
+---
+*Document version: v0.07, last updated: August 19, 2025*

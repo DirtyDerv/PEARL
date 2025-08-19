@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEARL Web Test Platform</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>PEARL Web Test Platform</h1>
+    <div id="test-controls">
+        <button id="connect-btn">Connect to Pico</button>
+        <button onclick="runAllTests()">Run All Tests (Web Only)</button>
+        <button id="run-pico-tests" disabled>Run All Tests on Pico</button>
+        <div id="test-results"></div>
+        <div id="serial-output" style="white-space:pre; background:#222; color:#0f0; padding:1em; margin-top:1em; max-height:200px; overflow:auto;"></div>
+    </div>
+    <script src="test.js"></script>
+</body>
+</html>

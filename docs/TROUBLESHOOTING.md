@@ -1,4 +1,8 @@
+
 # PEARL v0.07 Troubleshooting Guide
+
+---
+*Document version: v0.07, last updated: August 19, 2025*
 
 ## Table of Contents
 1. [Quick Diagnostics](#quick-diagnostics)
@@ -239,23 +243,53 @@
 
 ### Menu System Issues
 
+
 #### Cannot Enter Engineering Menu
-**Symptoms**: Long press doesn't activate menu
+**Symptoms**: Triple-click does not activate menu
 
 **Solutions**:
 - Check menu encoder button connection
-- Try different button press duration
+- Try rapid triple-click (not long press)
 - Verify button polarity and pull-up
 - Test button with multimeter
+- Ensure firmware is v0.08 or later
 
-#### Wrong Password
-**Symptoms**: Cannot pass password entry
+#### Password Entry Issues
+
+**Symptoms**: Cannot pass password entry, or forgot password
 
 **Solutions**:
 - Default password is "1234"
-- Check encoder rotation direction
-- Try manual password reset procedure
-- Factory reset if necessary
+- Use show/hide toggle to verify entry
+- Use Security menu to reset password to default
+- Password Reset Process:
+   1. Triple-click encoder to enter engineer menu
+   2. Navigate to Set Params → Security
+   3. Select Reset Password and confirm
+   4. Password will reset to 1234
+   5. Change password after reset for security
+- Factory reset if necessary (confirmation required)
+
+#### Demo Mode Issues
+**Symptoms**: Settings not changing, but menus work
+
+**Explanation**: Demo Mode allows safe exploration of all menus and features without changing any settings. Exit Demo Mode to make real changes.
+
+#### Calibration Not Saving or Wrong
+**Symptoms**: Calibration does not apply, or wrong value saved
+
+**Solutions**:
+- Use review/undo step to confirm calibration before saving
+- Ensure both positions are entered and confirmed
+- Check encoder and measured values for accuracy
+
+#### Diagnostics Not Updating
+**Symptoms**: Diagnostics screen does not show live values
+
+**Solutions**:
+- Ensure system is not paused or in error state
+- Check encoder and status display connections
+- Update firmware if feature missing
 
 #### Menu Navigation Problems
 **Symptoms**: Cannot navigate or select items

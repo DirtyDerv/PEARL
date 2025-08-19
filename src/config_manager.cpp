@@ -5,6 +5,7 @@
 #include "pico/stdlib.h"
 #include <cstring>
 #include <cmath>
+#include <cstdio>
 
 // Global configuration manager instance
 ConfigManager g_config_manager;
@@ -33,24 +34,31 @@ ConfigManager::ConfigManager() : config_loaded(false), config_modified(false),
 }
 
 bool ConfigManager::init() {
+    printf("[DEBUG] ConfigManager::init() - set_factory_defaults\n");
     set_factory_defaults();
-    
+    printf("[DEBUG] ConfigManager::init() - calling load_config()\n");
     // Try to load configuration from flash
     if (load_config()) {
+        printf("[DEBUG] ConfigManager::init() - load_config() returned true\n");
         config_loaded = true;
         config_modified = false;
         mark_change_time();
-        
+        printf("[DEBUG] ConfigManager::init() - checking wear_leveling_enabled\n");
         // Enable wear leveling by default for industrial applications
         if (wear_leveling_enabled) {
+            printf("[DEBUG] ConfigManager::init() - calling perform_wear_leveling()\n");
             perform_wear_leveling();
         }
+        printf("[DEBUG] ConfigManager::init() - returning true\n");
         return true;
     } else {
-        // No valid config found, use factory defaults and save
+        printf("[DEBUG] ConfigManager::init() - load_config() returned false -- resetting to factory defaults and saving to flash!\n");
+        set_factory_defaults();
         config_loaded = true;
         config_modified = true;
-        return save_config();
+        bool save_ok = save_config();
+        printf("[DEBUG] ConfigManager::init() - factory defaults saved to flash, save_config returned %d\n", save_ok);
+        return save_ok;
     }
 }
 
@@ -68,7 +76,7 @@ void ConfigManager::set_factory_defaults() {
     // Encoder defaults
     factory_config.encoder_resolution = 500;
     factory_config.thread_pitch = 1.0f;
-    factory_config.pio_enabled = true;
+    factory_config.pio_enabled = true; // Force PIO mode by default
     
     // Display defaults
     factory_config.update_rate = UPDATE_RATE_NORMAL;
@@ -175,80 +183,50 @@ uint32_t ConfigManager::get_backup_offset(uint8_t backup_index) {
 }
 
 bool ConfigManager::load_config() {
-    PersistentConfig temp_config;
-    
+    printf("[DEBUG] ConfigManager::load_config() - entered\n");
+    static PersistentConfig temp_config;
+    printf("[DEBUG] ConfigManager::load_config() - calling read_from_flash\n");
     // Try to load primary configuration
     if (read_from_flash(&temp_config, CONFIG_FLASH_OFFSET) && validate_config(&temp_config)) {
+        printf("[DEBUG] ConfigManager::load_config() - read_from_flash and validate_config returned true\n");
         memcpy(&current_config, &temp_config, sizeof(PersistentConfig));
         return true;
     }
-    
+    printf("[DEBUG] ConfigManager::load_config() - trying backups\n");
     // Primary config failed, try backups
     for (uint8_t i = 0; i < CONFIG_MAX_BACKUPS; i++) {
         uint32_t backup_offset = get_backup_offset(i);
-        if (read_from_flash(&temp_config, backup_offset) && validate_config(&temp_config)) {
+        printf("[DEBUG] ConfigManager::load_config() - backup %d offset: 0x%08lX\n", i, (unsigned long)backup_offset);
+        printf("[DEBUG] ConfigManager::load_config() - before read_from_flash for backup %d\n", i);
+        int read_result = read_from_flash(&temp_config, backup_offset);
+        printf("[DEBUG] ConfigManager::load_config() - after read_from_flash for backup %d, result: %d\n", i, read_result);
+        if (read_result && validate_config(&temp_config)) {
+            printf("[DEBUG] ConfigManager::load_config() - backup %d valid\n", i);
             memcpy(&current_config, &temp_config, sizeof(PersistentConfig));
             // Also restore to primary location
             write_to_flash(&current_config, CONFIG_FLASH_OFFSET);
             return true;
         }
     }
-    
+    printf("[DEBUG] ConfigManager::load_config() - no valid config found\n");
     return false;  // No valid configuration found
 }
 
 bool ConfigManager::save_config() {
-    if (!config_loaded) {
-        return false;
-    }
-    
-    // Check if configuration has actually changed (prevents unnecessary writes)
-    PersistentConfig flash_config;
-    if (load_config_from_flash(&flash_config)) {
-        if (configs_equal(&current_config, &flash_config)) {
-            config_modified = false;
-            return true; // No changes needed
-        }
-    }
-    
-    // Use wear leveling for industrial applications
-    if (wear_leveling_enabled) {
-        // Determine current sector address
-        uint32_t sector_addr = CONFIG_FLASH_OFFSET + (current_config.primary_sector_index * FLASH_SECTOR_SIZE);
-        bool success = save_config_to_sector(sector_addr);
-        if (success) {
-            config_modified = false;
-            last_save_time = current_config.last_save_time;
-            // Create backup if enough time has passed
-            if (current_config.last_save_time - last_backup_time > 3600000) {  // 1 hour
-                create_backup();
-            }
-        }
-        return success;
-    }
-    
-    // Traditional single-sector save for compatibility
-    // Update save metadata
+    printf("[DEBUG] ConfigManager::save_config() - FIRST LINE\n");
+    // Update config metadata
     current_config.save_count++;
+    printf("[DEBUG] ConfigManager::save_config() - save_count incremented\n");
     current_config.last_save_time = to_ms_since_boot(get_absolute_time());
+    printf("[DEBUG] ConfigManager::save_config() - last_save_time set\n");
     current_config.write_cycle_count++;
-    
-    // Recalculate checksum
+    printf("[DEBUG] ConfigManager::save_config() - write_cycle_count incremented\n");
     current_config.checksum = calculate_checksum(&current_config);
-    
-    // Write to primary location
+    printf("[DEBUG] ConfigManager::save_config() - checksum recalculated\n");
+    // Write to primary flash sector only
+    printf("[DEBUG] ConfigManager::save_config() - calling write_to_flash\n");
     bool success = write_to_flash(&current_config, CONFIG_FLASH_OFFSET);
-    
-    if (success) {
-        config_modified = false;
-        last_save_time = current_config.last_save_time;
-        
-        // Create backup if enough time has passed
-        if (current_config.last_save_time - last_backup_time > 3600000) {  // 1 hour
-            create_backup();
-        }
-    }
-    
+    printf("[DEBUG] ConfigManager::save_config() - write_to_flash returned %d\n", success);
     return success;
 }
 
@@ -536,21 +514,23 @@ bool ConfigManager::is_valid_update_rate(uint32_t rate) {
 
 // Helper methods for industrial optimization
 bool ConfigManager::load_config_from_flash(PersistentConfig* config) {
+    printf("[DEBUG] ConfigManager::load_config_from_flash() - entered\n");
     if (!config) return false;
-    
     // Read from current primary sector
     uint32_t sector_addr = CONFIG_FLASH_OFFSET;
     const PersistentConfig* flash_config = (const PersistentConfig*)sector_addr;
-    
+    printf("[DEBUG] ConfigManager::load_config_from_flash() - checking magic\n");
     // Check magic number and checksum
     if (flash_config->magic == CONFIG_MAGIC_NUMBER) {
+        printf("[DEBUG] ConfigManager::load_config_from_flash() - magic ok\n");
         uint16_t calculated_checksum = calculate_checksum(flash_config);
         if (calculated_checksum == flash_config->checksum) {
+            printf("[DEBUG] ConfigManager::load_config_from_flash() - checksum ok\n");
             memcpy(config, flash_config, sizeof(PersistentConfig));
             return true;
         }
     }
-    
+    printf("[DEBUG] ConfigManager::load_config_from_flash() - not valid\n");
     return false;
 }
 

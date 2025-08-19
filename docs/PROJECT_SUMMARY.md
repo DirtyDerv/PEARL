@@ -32,7 +32,7 @@ P:1.0 R:500          ← Pitch & Resolution
 ```
 
 ### ⌨️ **New Serial Commands:**
-- **R** - Reset position to zero
+- **R** - Reset position to 100mm
 - **S** - Scan I2C bus for troubleshooting
 - **P** - Toggle between PIO and GPIO modes
 - **V** - Show detailed velocity information

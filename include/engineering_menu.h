@@ -1,9 +1,12 @@
+
+
+
 #ifndef ENGINEERING_MENU_H
 #define ENGINEERING_MENU_H
 
 #include "pico/stdlib.h"
 #include "lcd_i2c.h"
-#include "hw040_encoder.h"
+#include "hw040_encoder.h" // For MenuDirection
 #include "quadrature_encoder.h"
 #include "status_display.h"
 #include "config_manager.h"
@@ -14,18 +17,27 @@
 enum class MenuState {
     HIDDEN,         // Menu not active
     USER_MENU,      // User-level menu (position control only)
+    USER_RESET_CONFIRM, // User menu: confirm reset
+    USER_RESET_DONE,    // User menu: reset complete
     PASSWORD_ENTRY, // Password entry screen
-    MAIN_MENU,      // Main engineering menu selection
-    ENCODER_CONFIG, // Encoder configuration
-    DISPLAY_CONFIG, // Display settings
-    CONFIG_MGMT,    // Configuration management
-    SYSTEM_INFO,    // System information
-    DIAGNOSTICS,    // System diagnostics
-    CALIBRATION,    // Calibration routines
-    PERFORMANCE,    // Performance monitoring
-    FACTORY_RESET,  // Factory reset options
-    SAVE_CONFIG,    // Save configuration
-    PASSWORD_CHANGE, // Change password
+    MAIN_MENU,      // Engineer's menu selection
+    ENG_CALIBRATE,  // Engineer: Calibrate flow
+    ENG_SET_PARAMS, // Engineer: Set Params submenu
+    ENG_SET_ENCODER_RES, // Engineer: Set encoder resolution
+    ENG_SET_OUTPUT_TYPE, // Engineer: Set output type (disabled)
+    ENG_SET_SLEEP_TIME,  // Engineer: Set sleep time
+    ENCODER_CONFIG, // (legacy, can be removed later)
+    DISPLAY_CONFIG, // (legacy, can be removed later)
+    CONFIG_MGMT,    // (legacy, can be removed later)
+    SYSTEM_INFO,    // (legacy, can be removed later)
+    DIAGNOSTICS,    // (legacy, can be removed later)
+    CALIBRATION,    // (legacy, can be removed later)
+    PERFORMANCE,    // (legacy, can be removed later)
+    FACTORY_RESET,  // (legacy, can be removed later)
+    SAVE_CONFIG,    // (legacy, can be removed later)
+    SAVE_AND_EXIT_CONFIRM, // New: confirmation dialog for Save & Exit
+    PASSWORD_CHANGE, // (legacy, can be removed later)
+    EDIT_INT_VALUE, // Non-blocking integer value editor
     CAL_SETUP,      // Calibration setup instructions
     CAL_POSITION1,  // Set first calibration position
     CAL_MOVE_TO_POS2, // Move to second position
@@ -77,18 +89,11 @@ struct CalibrationData {
     float velocity_scale;    // Dynamic velocity scaling
 };
 
-enum class UserMenuItems {
-    RESET_POSITION = 0,
-    SET_POSITION,
-    ENGINEERING_ACCESS,
-    EXIT_MENU,
-    ITEM_COUNT
-};
 
+// Main menu items for engineer menu
 enum class MainMenuItems {
     ENCODER_SETTINGS = 0,
     DISPLAY_SETTINGS,
-    CONFIGURATION_MGMT,
     SYSTEM_INFORMATION,
     DIAGNOSTICS_TOOLS,
     CALIBRATION_TOOLS,
@@ -97,6 +102,14 @@ enum class MainMenuItems {
     FACTORY_RESET,
     SAVE_AND_EXIT,
     CANCEL_EXIT,
+    ITEM_COUNT
+};
+
+// User menu items
+enum class UserMenuItems {
+    RESET_POSITION = 0,
+    ABOUT,
+    EXIT_MENU,
     ITEM_COUNT
 };
 
@@ -129,38 +142,68 @@ struct EngineeringConfig {
 };
 
 class EngineeringMenu {
+    // --- Calibration and menu drawing/handling ---
+    void draw_calibration_review();
+    void draw_calibration_complete(bool saved);
+    void handle_factory_reset_confirm(MenuDirection direction);
+    void handle_calibration_flow(MenuDirection direction);
+    void draw_calibration_set_pos1(float pos_mm);
+    void draw_calibration_move_prompt();
+    void draw_calibration_set_pos2(float pos_mm);
+    void draw_calibration_calculate();
+    void draw_calibration_complete();
+    void draw_calibration_intro();
+    void handle_engineer_main_menu(MenuDirection direction);
+    void draw_engineer_main_menu(MainMenuItems selected);
+    void handle_set_params_menu(MenuDirection direction);
+    void draw_set_params_menu(int selected);
+        // void show_about_submenu(); // Duplicate, removed
 private:
     LCD_I2C* lcd;
     HW040Encoder* menu_encoder;
     QuadratureEncoder* main_encoder;
     StatusDisplay* status_display;
-    
+
     MenuState current_state;
     MainMenuItems selected_item;
     UserMenuItems selected_user_item;
-    uint8_t submenu_index;
+        void draw_user_reset_confirm();
+        void handle_user_reset_confirm(MenuDirection direction);
+        void draw_user_reset_done();
     bool menu_active;
     uint32_t menu_timeout;
     uint32_t last_activity;
-    
+
     EngineeringConfig config;
     EngineeringConfig default_config;
-    
+
     // Calibration system
     CalibrationData calibration;
-    
+
     // Password entry state
-    uint16_t password_entry[4];     // Current password being entered
+            // void show_about_submenu(); // Duplicate, removed
+            int submenu_index; // Added missing member
     uint8_t password_digit_index;   // Current digit being edited (0-3)
     uint32_t password_timeout;      // Password entry timeout
     uint8_t password_attempts;      // Failed password attempts
-    
+    uint8_t password_entry[4];      // 4-digit password entry array
+
+    // Non-blocking value editor context
+    struct IntEditContext {
+        const char* label;
+        int32_t* value_ptr;
+        int32_t min;
+        int32_t max;
+        int32_t temp_value;
+        bool active;
+    } int_edit_ctx;
+
     // Menu timeout settings
     static const uint32_t MENU_TIMEOUT_MS = 60000;  // 1 minute timeout
     static const uint32_t SUBMENU_TIMEOUT_MS = 120000; // 2 minute timeout for submenus
     static const uint32_t PASSWORD_TIMEOUT_MS = 30000;  // 30 second password timeout
     static const uint8_t MAX_PASSWORD_ATTEMPTS = 3;     // Lock after 3 failed attempts
-    
+
     // Menu navigation
     void handle_menu_input(MenuDirection direction);
     void draw_main_menu();
@@ -169,6 +212,7 @@ private:
     void enter_submenu();
     void exit_to_main();
     void exit_menu();
+public:
     void start_user_menu();
     void start_engineering_access();
     
@@ -176,6 +220,7 @@ private:
     void handle_user_menu(MenuDirection direction);
     void handle_position_reset();
     void handle_position_set();
+    void show_about_submenu();
     
     // Password system
     void start_password_entry();
@@ -186,9 +231,10 @@ private:
     void handle_password_timeout();
     void draw_password_change_screen(uint16_t* new_pass, uint16_t* confirm_pass, 
                                    uint8_t digit_idx, bool confirm_mode);
-    
+    // void show_about_submenu(); // Duplicate, removed
     // Submenu handlers
     void handle_encoder_config(MenuDirection direction);
+    void draw_encoder_config();
     void handle_display_config(MenuDirection direction);
     void handle_system_info(MenuDirection direction);
     void handle_diagnostics(MenuDirection direction);
@@ -207,7 +253,8 @@ private:
     const char* get_menu_item_text(MainMenuItems item);
     const char* get_user_menu_item_text(UserMenuItems item);
     void show_confirmation_dialog(const char* message);
-    void show_value_editor(const char* name, int32_t* value, int32_t min, int32_t max);
+    void start_value_editor(const char* name, long* value, long min, long max);
+    void update_value_editor(bool button_pressed, bool button_held);
     void show_float_editor(const char* name, float* value, float min, float max, float step);
     void show_bool_editor(const char* name, bool* value);
     void show_position_editor(const char* title, int32_t current_pos);
@@ -231,7 +278,7 @@ public:
     
     // Menu lifecycle
     bool init();
-    void update();  // Call this regularly in main loop
+    void update(bool button_pressed, bool button_held);  // Call this regularly in main loop, pass button press edge and hold
     
     // Menu activation
     void activate_menu();
@@ -253,6 +300,9 @@ public:
     
     // Menu item descriptions for help
     const char* get_item_description(MainMenuItems item);
+    
+    // Debugging
+    MenuState get_current_state() const { return current_state; }
 };
 
 #endif // ENGINEERING_MENU_H

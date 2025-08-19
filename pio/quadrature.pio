@@ -4,19 +4,19 @@
 ; Added FIFO monitoring and performance optimizations
 
 .program quadrature
-
-; High-performance quadrature decoder with reliability features
-; Optimized for consistent timing and error detection
-
 .wrap_target
 start:
-    in pins, 2              ; Read current encoder state (A, B)
-    push noblock            ; Push current state to FIFO for processing
-    ; Performance optimization: Check if FIFO is getting full
-    ; This helps detect if processing is falling behind
+    in pins, 2              ; Read current encoder state (A, B) into ISR
+    mov x, isr              ; x = current state
+    mov y, osr              ; y = previous state
+    mov osr, x              ; Save current state for next loop
+    jmp x!=y, push_state    ; If state changed, push
+    jmp continue            ; Otherwise, skip push
+push_state:
+    push noblock
+continue:
     mov x, STATUS           ; Read status register
     jmp !x, start           ; If FIFO not full, continue immediately
-    ; If FIFO is full, add tiny delay to prevent overflow
     nop [1]                 ; Brief pause for processing to catch up
 .wrap
 

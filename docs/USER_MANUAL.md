@@ -1,5 +1,10 @@
 # PEARL v0.07 User Manual
 
+# PEARL v0.07 User Manual
+
+---
+*Document version: v0.07, last updated: August 19, 2025*
+
 ## Table of Contents
 1. [Getting Started](#getting-started)
 2. [Main Display](#main-display)
@@ -9,6 +14,7 @@
 6. [Daily Operation](#daily-operation)
 7. [Maintenance](#maintenance)
 8. [Troubleshooting](#troubleshooting)
+9. [Changelog](#changelog)
 
 ## Getting Started
 
@@ -21,7 +27,7 @@
 ### Basic Operation Overview
 - **Position Monitoring**: Continuous display of current position
 - **Menu Access**: Long press encoder button for settings
-- **Reset Position**: Quick reset to zero reference
+- **Reset Position**: Quick reset to 100mm reference
 - **Calibration**: Interactive precision calibration system
 
 ## Main Display
@@ -62,53 +68,48 @@
 
 ## Engineering Menu
 
-### Accessing the Menu
-1. **Long Press**: Hold HW-040 encoder button for 2+ seconds
+### Accessing the Engineer Menu
+1. **Triple-Click**: Rapidly press the HW-040 encoder button 3 times
 2. **Password Entry**: Enter 4-digit password (default: 1234)
-   - Rotate encoder to select digit (0-9)
-   - Press button to confirm each digit
-   - Press when complete
+  - Rotate encoder to select digit (0-9)
+  - Press button to confirm each digit
+  - Press when complete
+  - Use show/hide toggle for password visibility
+  - Reset to default available in Security settings
 3. **Menu Navigation**: Use encoder to navigate options
+4. **Timeout**: Menu auto-exits after inactivity for security
 
-### Menu Structure
+### Engineer Menu Structure
 ```
-Engineering Menu
-├── Encoder Settings
-│   ├── Encoder Resolution (PPR)
-│   ├── Thread Pitch (mm)
-│   ├── Invert Direction
-│   └── Enable PIO Mode
-├── Display Settings
-│   ├── Update Rate (ms)
-│   ├── I2C Address
-│   ├── Backlight Control
-│   └── Contrast Setting
-├── Calibration
-│   ├── Interactive Calibration
-│   ├── Manual Pitch Entry
-│   └── Reset Calibration
+Engineer Menu
+├── Calibrate
+│   ├── Step-by-step calibration (editable positions)
+│   ├── Review/Undo before saving
+├── Set Params
+│   ├── Encoder Settings (resolution, scale, direction, filter)
+│   ├── Display Settings (contrast, backlight)
+│   ├── System Settings (timeouts, debug, error thresholds)
+│   ├── Security (change/reset password)
+│   └── < Back
 ├── Diagnostics
-│   ├── Encoder Test
-│   ├── I2C Scanner
-│   ├── Performance Monitor
-│   └── System Information
-├── Performance Settings
-│   ├── CPU Frequency
-│   ├── Memory Usage
-│   └── Optimization Level
-├── Factory Reset
-│   ├── Reset All Settings
-│   ├── Keep Calibration
-│   └── Full Factory Reset
-├── Save and Exit
-└── Cancel (No Save)
+│   ├── Live encoder value
+│   ├── Error count
+│   ├── FIFO usage
+│   └── System status
+├── About
+│   ├── Firmware version
+│   ├── Build date
+│   └── Author info
+└── Exit
 ```
 
 ### Menu Navigation
 - **Rotate Encoder**: Move between menu items
 - **Press Button**: Select highlighted item
-- **Long Press**: Go back to previous menu
-- **Auto-timeout**: Returns to main display after 5 minutes
+- **Back**: Return/cancel
+- **Confirmation Dialogs**: For Factory Reset, Save & Exit, Calibration
+- **Help/Info**: '?' or long-press for help (where available)
+- **Auto-timeout**: Menu auto-exits after inactivity
 
 ## Calibration System
 
@@ -200,7 +201,7 @@ Engineering Menu
 
 ### Calibration Verification
 1. **Move to Known Position**: Use precision reference
-2. **Reset Position**: Set to zero
+2. **Reset Position**: Set to 100mm
 3. **Move Exact Distance**: Use calibrated measurement
 4. **Check Reading**: Should match within ±0.1%
 
@@ -284,8 +285,8 @@ Engineering Menu
 ### Position Reset
 1. **Quick Reset**: Short press menu encoder when in main display
 2. **Confirmation**: System prompts for confirmation
-3. **Zero Set**: Current position becomes new zero reference
-4. **Indication**: Status shows "Zero Set" briefly
+3. **100mm Set**: Current position is set to 100.000 mm
+4. **Indication**: Status shows "Position Reset to 100mm" briefly
 
 ### End of Shift
 1. **Final Position**: Note final position for next startup
@@ -408,6 +409,12 @@ Engineering Menu
 - **Community Forum**: User support community
 - **Technical Support**: Professional assistance
 
+## Changelog
+
+- v0.07 (August 19, 2025): Major menu refactor, password security, calibration review, diagnostics, factory reset, demo mode, documentation overhaul.
+
+---
+*Document version: v0.07, last updated: August 19, 2025*
 ---
 
 **For technical support**: Contact support team with specific error descriptions and system configuration details.
