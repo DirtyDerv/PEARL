@@ -1,4 +1,3 @@
-
 # (Moved lcd_test target setup to after Pico SDK/project setup)
 # Generated Cmake Pico project file
 
@@ -80,7 +79,7 @@ target_include_directories(PEARL PRIVATE
 )
 
 # Minimal LCD test target (after Pico SDK/project setup)
-add_executable(lcd_test src/lcd_test.cpp src/lcd_i2c.cpp)
+add_executable(lcd_test src/lcd_test.cpp src/lcd_i2c.cpp src/big_font.cpp)
 target_link_libraries(lcd_test pico_stdlib hardware_i2c)
 target_include_directories(lcd_test PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/include)
 pico_add_extra_outputs(lcd_test)
@@ -95,5 +94,3 @@ target_link_libraries(PEARL
     )
 
 pico_add_extra_outputs(PEARL)
-
-

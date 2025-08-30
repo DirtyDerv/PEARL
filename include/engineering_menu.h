@@ -1,6 +1,3 @@
-
-
-
 #ifndef ENGINEERING_MENU_H
 #define ENGINEERING_MENU_H
 
@@ -38,12 +35,16 @@ enum class MenuState {
     SAVE_AND_EXIT_CONFIRM, // New: confirmation dialog for Save & Exit
     PASSWORD_CHANGE, // (legacy, can be removed later)
     EDIT_INT_VALUE, // Non-blocking integer value editor
+    EDIT_FLOAT_VALUE,
+    EDIT_BOOL_VALUE,
+    EDIT_POSITION_VALUE,
     CAL_SETUP,      // Calibration setup instructions
     CAL_POSITION1,  // Set first calibration position
     CAL_MOVE_TO_POS2, // Move to second position
     CAL_POSITION2,  // Set second calibration position
     CAL_CALCULATE,  // Calculate and confirm calibration
-    CAL_COMPLETE    // Calibration complete
+    CAL_COMPLETE,   // Calibration complete
+    MESSAGE         // Display a message for a short time
 };
 
 enum class CalibrationState {
@@ -157,6 +158,7 @@ class EngineeringMenu {
     void draw_engineer_main_menu(MainMenuItems selected);
     void handle_set_params_menu(MenuDirection direction);
     void draw_set_params_menu(int selected);
+    void draw_message_screen();
         // void show_about_submenu(); // Duplicate, removed
 private:
     LCD_I2C* lcd;
@@ -165,6 +167,7 @@ private:
     StatusDisplay* status_display;
 
     MenuState current_state;
+    MenuState post_edit_state;
     MainMenuItems selected_item;
     UserMenuItems selected_user_item;
         void draw_user_reset_confirm();
@@ -198,11 +201,33 @@ private:
         bool active;
     } int_edit_ctx;
 
+    struct FloatEditContext {
+        const char* label;
+        float* value_ptr;
+        float min;
+        float max;
+        float step;
+        float temp_value;
+    } float_edit_ctx;
+
+    struct BoolEditContext {
+        const char* label;
+        bool* value_ptr;
+        bool temp_value;
+    } bool_edit_ctx;
+
     // Menu timeout settings
     static const uint32_t MENU_TIMEOUT_MS = 60000;  // 1 minute timeout
     static const uint32_t SUBMENU_TIMEOUT_MS = 120000; // 2 minute timeout for submenus
     static const uint32_t PASSWORD_TIMEOUT_MS = 30000;  // 30 second password timeout
     static const uint8_t MAX_PASSWORD_ATTEMPTS = 3;     // Lock after 3 failed attempts
+
+    // Message display state
+    MenuState post_message_state;
+    uint32_t message_display_start_ms;
+    uint32_t message_display_duration_ms;
+    char message_line1[21];
+    char message_line2[21];
 
     // Menu navigation
     void handle_menu_input(MenuDirection direction);
@@ -212,13 +237,21 @@ private:
     void enter_submenu();
     void exit_to_main();
     void exit_menu();
+
+    // Value editors
+    void handle_edit_int(MenuDirection direction);
+    void draw_edit_int();
+    void handle_edit_float(MenuDirection direction);
+    void draw_edit_float();
+    void handle_edit_bool(MenuDirection direction);
+    void draw_edit_bool();
+
 public:
     void start_user_menu();
     void start_engineering_access();
     
     // User menu handlers
     void handle_user_menu(MenuDirection direction);
-    void handle_position_reset();
     void handle_position_set();
     void show_about_submenu();
     
@@ -254,10 +287,8 @@ public:
     const char* get_user_menu_item_text(UserMenuItems item);
     void show_confirmation_dialog(const char* message);
     void start_value_editor(const char* name, long* value, long min, long max);
-    void update_value_editor(bool button_pressed, bool button_held);
-    void show_float_editor(const char* name, float* value, float min, float max, float step);
-    void show_bool_editor(const char* name, bool* value);
-    void show_position_editor(const char* title, int32_t current_pos);
+    void start_float_editor(const char* name, float* value, float min, float max, float step);
+    void start_bool_editor(const char* name, bool* value);
     
     // Calibration system methods
     void start_calibration();

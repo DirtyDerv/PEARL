@@ -1,153 +1,144 @@
 #include "status_display.h"
-#include "pico/time.h"
+#include <cstdio>
 #include <cmath>
 
-StatusDisplay::StatusDisplay(LCD_I2C* lcd_instance) {
+StatusDisplay::StatusDisplay(LCD_I2C* lcd_instance, BigFont* big_font_instance) {
     lcd = lcd_instance;
+    big_font = big_font_instance;
     animation_frame = 0;
     last_animation_update = 0;
-    last_velocity = 0.0f;
+    last_distance = -999.0f;
+    last_velocity = -999.0f;
+    last_rpm = -999.0f;
     last_direction_positive = true;
-    max_display_velocity = 10.0f;
+    current_mode = DisplayMode::STANDARD;
 }
 
 void StatusDisplay::init() {
-    // Draw static elements that don't change
     draw_static_elements();
 }
 
+void StatusDisplay::set_display_mode(DisplayMode mode) {
+    current_mode = mode;
+    lcd->clear();
+}
+
 void StatusDisplay::update(const QuadratureEncoder& encoder) {
-    uint32_t current_time = to_ms_since_boot(get_absolute_time());
-    float current_velocity = encoder.get_velocity();
-    bool is_moving = (fabsf(current_velocity) > 0.01f); // Threshold for considering "moving"
-    bool direction_positive = (current_velocity >= 0);
-    
-    // Update animation frame
-    if (current_time - last_animation_update >= ANIMATION_INTERVAL) {
-        animation_frame = (animation_frame + 1) % 4; // 4-frame animation
-        last_animation_update = current_time;
+    if (current_mode == DisplayMode::BIG_FONT) {
+        display_big_font(encoder);
+        return;
     }
-    
-    // Update direction indicator
-    if (direction_positive != last_direction_positive || 
-        (is_moving != (fabsf(last_velocity) > 0.01f))) {
-        draw_direction_arrow(direction_positive, is_moving);
-        last_direction_positive = direction_positive;
+
+    char buf[21];
+    float distance = encoder.get_distance();
+    if (abs(distance - last_distance) > 0.0005f) {
+        snprintf(buf, sizeof(buf), "Pos: %8.3f mm", distance);
+        lcd->set_cursor(0, 0);
+        lcd->print(buf);
+        last_distance = distance;
     }
-    
-    // Update speed bar (update more frequently for smooth display)
-    if (fabsf(current_velocity - last_velocity) > 0.1f || 
-        current_time - last_animation_update < ANIMATION_INTERVAL) {
-        draw_speed_bar(current_velocity);
-        last_velocity = current_velocity;
+
+    float velocity = encoder.get_velocity();
+    if (abs(velocity - last_velocity) > 0.005f) {
+        snprintf(buf, sizeof(buf), "Vel: %8.2f mm/s", velocity);
+        lcd->set_cursor(0, 1);
+        lcd->print(buf);
+        last_velocity = velocity;
+    }
+
+    float rpm = encoder.get_rpm();
+    if (abs(rpm - last_rpm) > 0.05f) {
+        snprintf(buf, sizeof(buf), "RPM: %9.1f", rpm);
+        lcd->set_cursor(0, 2);
+        lcd->print(buf);
+        last_rpm = rpm;
+    }
+
+    // Update animation and dynamic elements
+    uint32_t now = to_ms_since_boot(get_absolute_time());
+    if (now - last_animation_update > ANIMATION_INTERVAL) {
+        animation_frame++;
+        if (animation_frame > 3) {
+            animation_frame = 0;
+        }
+        last_animation_update = now;
+    }
+
+    bool is_moving = (velocity != 0.0f);
+    bool is_positive = (velocity >= 0.0f);
+    draw_direction_arrow(is_positive, is_moving);
+    draw_speed_bar(velocity, max_display_velocity);
+}
+
+void StatusDisplay::display_big_font(const QuadratureEncoder& encoder) {
+    big_font->init_matrix_font();
+    char buffer[10];
+    snprintf(buffer, sizeof(buffer), "%7.2f", encoder.get_distance());
+
+    int col = 0;
+    for (int i = 0; i < 7; i++) {
+        if (buffer[i] == ' ') {
+            col += 3;
+        } else if (buffer[i] == '.') {
+            big_font->display_big_char('.', col, 0);
+            col += 1;
+        }
+        else {
+            big_font->display_big_char(buffer[i], col, 0);
+            col += 4;
+        }
     }
 }
 
 void StatusDisplay::draw_static_elements() {
-    // Draw labels and static parts on the bottom row
+    // This could be used to draw a border or other static elements
+}
+
+void StatusDisplay::clear_status_line() {
     lcd->set_cursor(0, 3);
-    lcd->print("Dir:     Spd:");
+    lcd->print("                    ");
 }
 
 void StatusDisplay::draw_direction_arrow(bool moving_positive, bool is_moving) {
-    lcd->set_cursor(4, 3);
-    
+    lcd->set_cursor(19, 0);
     if (!is_moving) {
-        lcd->print("---"); // Stopped indicator
-    } else if (moving_positive) {
-        // Animate forward arrow
-        switch (animation_frame) {
-            case 0: lcd->print(">>>");  break;
-            case 1: lcd->print(" >>>");  break;
-            case 2: lcd->print(">>>");  break;
-            case 3: lcd->print(">> ");  break;
-        }
+        lcd->write(' ');
     } else {
-        // Animate backward arrow  
-        switch (animation_frame) {
-            case 0: lcd->print("<<<"); break;
-            case 1: lcd->print("<<< "); break;
-            case 2: lcd->print("<<<"); break;
-            case 3: lcd->print(" <<<"); break;
+        if (moving_positive) {
+            lcd->write('^');
+        } else {
+            lcd->write('v');
         }
     }
 }
 
 void StatusDisplay::draw_speed_bar(float velocity, float max_velocity) {
-    // Calculate speed as percentage of max
-    float speed_percent = fabsf(velocity) / max_velocity;
-    if (speed_percent > 1.0f) speed_percent = 1.0f;
-    
-    // Convert to bar segments (7 characters available: positions 9-15)
-    uint8_t bar_length = (uint8_t)(speed_percent * 7.0f);
-    
-    lcd->set_cursor(9, 3);
-    
-    // Draw speed bar with different characters for different levels
-    for (int i = 0; i < 7; i++) {
-        if (i < bar_length) {
-            if (speed_percent < 0.3f) {
-                lcd->print("."); // Low speed
-            } else if (speed_percent < 0.7f) {
-                lcd->print("="); // Medium speed
-            } else {
-                lcd->print("#"); // High speed
-            }
+    uint8_t bar_width = 10;
+    float speed_ratio = abs(velocity) / max_velocity;
+    if (speed_ratio > 1.0) {
+        speed_ratio = 1.0;
+    }
+    uint8_t filled_segments = speed_ratio * bar_width;
+
+    lcd->set_cursor(5, 3);
+    for (uint8_t i = 0; i < bar_width; ++i) {
+        if (i < filled_segments) {
+            lcd->write(0xFF); // Solid block character
         } else {
-            lcd->print(" ");
+            lcd->write('-');
         }
     }
 }
 
-void StatusDisplay::clear_status_line() {
-    lcd->set_cursor(0, 3);
-    lcd->print("                "); // Clear entire bottom line
-}
-
-// v0.04 enhancement: Performance status indicators
 void StatusDisplay::draw_performance_status(bool has_warning, uint32_t fifo_errors, uint32_t invalid_transitions) {
     lcd->set_cursor(0, 3);
-    
-    if (has_warning || fifo_errors > 0 || invalid_transitions > 0) {
-        // Show warning indicator
-        lcd->print("!");
-        if (fifo_errors > 0) {
-            lcd->printf("F%lu", fifo_errors);
-        }
-        if (invalid_transitions > 0) {
-            lcd->printf("E%lu", invalid_transitions);
-        }
+    if (has_warning) {
+        lcd->print("PERF WARN!");
     } else {
-        // Show OK status
-        lcd->print("OK");
+        lcd->print("PERF OK   ");
     }
-}
-
-void StatusDisplay::draw_update_rate_indicator(uint32_t update_rate) {
-    lcd->set_cursor(4, 3);
-    
-    if (update_rate <= 20) {
-        lcd->print("T");  // Turbo
-    } else if (update_rate <= 50) {
-        lcd->print("F");  // Fast
-    } else if (update_rate <= 100) {
-        lcd->print("N");  // Normal
-    } else {
-        lcd->print("S");  // Slow
-    }
-}
-
-void StatusDisplay::draw_system_health_bar(float cpu_load_estimate) {
-    lcd->set_cursor(13, 3);
-    
-    // Simple health indicator (3 characters)
-    if (cpu_load_estimate < 0.3f) {
-        lcd->print("|||");  // Excellent
-    } else if (cpu_load_estimate < 0.6f) {
-        lcd->print("|| ");  // Good
-    } else if (cpu_load_estimate < 0.8f) {
-        lcd->print("|  ");  // Fair
-    } else {
-        lcd->print("   ");  // Poor
-    }
+    char buf[10];
+    snprintf(buf, sizeof(buf), "F:%d T:%d", fifo_errors, invalid_transitions);
+    lcd->set_cursor(11, 3);
+    lcd->print(buf);
 }

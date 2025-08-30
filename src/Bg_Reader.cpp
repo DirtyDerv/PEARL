@@ -1,4 +1,3 @@
-
 #include "engineering_menu.h"
 #include "hardware/watchdog.h"
 #ifndef SRAM_END
@@ -52,6 +51,9 @@ int main() {
     
     // Give USB time to initialize for serial output
     sleep_ms(2000);
+
+    // Enable watchdog timer
+    watchdog_enable(1000, 1);
     
     // LCD/I2C must be initialized before config manager
     
@@ -149,7 +151,7 @@ int main() {
     big_font.init();
     
     // Initialize status display for direction and speed
-    StatusDisplay status(&lcd);
+    StatusDisplay status(&lcd, &big_font);
     status.set_max_velocity_for_display(10.0f); // Set max velocity for speed bar
     status.init();
     
@@ -211,12 +213,14 @@ int main() {
     uint32_t last_update = 0;
     int32_t last_position = 0;
     uint32_t update_rate_ms = GET_UPDATE_RATE();  // Use configured update rate
+    uint32_t last_movement_time = 0;
     
     printf("Starting main position monitoring loop...\n");
     printf("Commands: R=reset, S=scan, P=PIO toggle, V=velocity/perf, D=display, C=clear counters, I=version, H=help\n");
     printf("Engineering Menu: Triple-click the HW-040 encoder button within 1 second\n\n");
     
     while (true) {
+        watchdog_update();
         uint32_t current_time = to_ms_since_boot(get_absolute_time());
 
         // Update configuration manager (handles auto-save)
@@ -256,7 +260,6 @@ int main() {
 
         // Update engineering menu if active
         if (eng_menu.is_menu_active()) {
-            printf("[DEBUG] eng_menu.update() called, current_state=%d\n", (int)eng_menu.get_current_state());
             eng_menu.update(button_pressed, button_held);
         }
 
@@ -339,9 +342,16 @@ int main() {
             printf("Click Count: %lu\n", menu_encoder.get_click_count());
             printf("Menu Active: %s\n", eng_menu.is_menu_active() ? "YES" : "No");
             printf("Hint: Triple-click to enter engineering menu\n\n");
-        } else if (c == 'd' || c == 'D') {
-            // Toggle display mode (future enhancement placeholder)
-            printf("Big font display mode (additional modes coming soon)\n");
+        } else if (c == 'f' || c == 'F') {
+            static bool big_font_mode = false;
+            big_font_mode = !big_font_mode;
+            if (big_font_mode) {
+                status.set_display_mode(DisplayMode::BIG_FONT);
+                printf("Big font display mode enabled\n");
+            } else {
+                status.set_display_mode(DisplayMode::STANDARD);
+                printf("Standard display mode enabled\n");
+            }
         }
 
         // Update display at regular interval or when position changes significantly
@@ -356,20 +366,20 @@ int main() {
         mutex_exit(&encoder_mutex);
 
         bool position_changed = (current_position != last_position);
-        bool time_to_update = (current_time - last_update) >= update_rate_ms;
 
-        if (position_changed || time_to_update) {
+        if (position_changed) {
+            last_movement_time = current_time;
+            lcd.backlight_on();
+        }
+
+        if (current_time - last_movement_time > 15 * 60 * 1000) {
+            lcd.backlight_off();
+        }
+
+        if (position_changed) {
             // Only update display if menu is NOT active
             if (!eng_menu.is_menu_active()) {
-                lcd.clear();
-                lcd.set_cursor(0, 0);
-                char buf[16];
-                snprintf(buf, sizeof(buf), "Pos: %7.2f", current_distance);
-                lcd.print(buf);
-                last_update = current_time;
-
-                // Encoder debug print removed
-
+                status.update(encoder);
                 last_position = current_position;
             }
         }

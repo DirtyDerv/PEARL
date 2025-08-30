@@ -18,17 +18,24 @@ private:
     void print_big_minus(uint8_t col, uint8_t row);
     void print_big_decimal(uint8_t col, uint8_t row);
     void clear_big_digit_area(uint8_t col, uint8_t row);
+
+    void create_matrix_characters();
+    static const uint8_t big_font_shape_table[8][8];
+    static const uint8_t big_font_ascii_table[];
     
 public:
     BigFont(LCD_I2C* lcd_instance);
     
     void init();
+    void init_matrix_font();
     void display_big_number(float number, uint8_t start_col = 0, uint8_t start_row = 0);
     void clear_display_area();
+
+    void display_big_char(char ch, uint8_t col, uint8_t row);
     
     // Constants for layout
     static const uint8_t DIGIT_WIDTH = 3;   // Each digit is 3 characters wide
-    static const uint8_t DIGIT_HEIGHT = 3;  // Each digit is 3 characters tall
+    static const uint8_t DIGIT_HEIGHT = 2;  // Each digit is 2 characters tall
     static const uint8_t MAX_DIGITS = 6;    // ####.# format (including decimal)
 };
 

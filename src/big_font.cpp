@@ -136,3 +136,77 @@ void BigFont::clear_big_digit_area(uint8_t col, uint8_t row) {
         lcd->print("  "); // 2 spaces
     }
 }
+
+// New big font data
+const uint8_t BigFont::big_font_shape_table[8][8] = {
+    {0b01111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111}, // LT
+    {0b11111, 0b11111, 0b11111, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000}, // UB
+    {0b11110, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111}, // RT
+    {0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b01111}, // LL
+    {0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b11111, 0b11111, 0b11111}, // LB
+    {0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11110}, // LR
+    {0b11111, 0b11111, 0b11111, 0b00000, 0b00000, 0b00000, 0b11111, 0b11111}, // UMB
+    {0b11111, 0b00000, 0b00000, 0b00000, 0b00000, 0b11111, 0b11111, 0b11111}  // LMB
+};
+
+const uint8_t BigFont::big_font_ascii_table[] = {
+    // Characters from ASCII 32 to 57 (space to '9')
+    // Each character is 6 bytes (3 for top row, 3 for bottom row)
+    // 255 is a full block, 32 is a space
+    32, 32, 32, 32, 32, 32, // 32: space
+    32, 32, 32, 32, 32, 32, // 33: !
+    32, 32, 32, 32, 32, 32, // 34: "
+    32, 32, 32, 32, 32, 32, // 35: #
+    32, 32, 32, 32, 32, 32, // 36: $
+    32, 32, 32, 32, 32, 32, // 37: %
+    32, 32, 32, 32, 32, 32, // 38: &
+    32, 32, 32, 32, 32, 32, // 39: '
+    32, 32, 32, 32, 32, 32, // 40: (
+    32, 32, 32, 32, 32, 32, // 41: )
+    32, 32, 32, 32, 32, 32, // 42: *
+    32, 32, 32, 32, 32, 32, // 43: +
+    32, 32, 32, 32, 32, 32, // 44: ,
+    32, 32, 32, 32, 32, 32, // 45: -
+    32, 32, 32, 32, 4, 32,  // 46: .
+    32, 32, 32, 32, 32, 32, // 47: /
+    0, 1, 2, 3, 4, 5,       // 48: 0
+    1, 2, 32, 32, 5, 32,    // 49: 1
+    6, 6, 2, 3, 7, 7,       // 50: 2
+    6, 6, 2, 7, 7, 5,       // 51: 3
+    3, 4, 2, 32, 32, 5,     // 52: 4
+    0, 6, 6, 7, 7, 5,       // 53: 5
+    0, 6, 6, 3, 7, 5,       // 54: 6
+    1, 1, 2, 32, 0, 32,     // 55: 7
+    0, 6, 2, 3, 7, 5,       // 56: 8
+    0, 6, 2, 32, 32, 5      // 57: 9
+};
+
+void BigFont::init_matrix_font() {
+    create_matrix_characters();
+}
+
+void BigFont::create_matrix_characters() {
+    for (int i = 0; i < 8; i++) {
+        lcd->create_char(i, big_font_shape_table[i]);
+    }
+}
+
+void BigFont::display_big_char(char ch, uint8_t col, uint8_t row) {
+    if (ch < 32 || ch > 57) {
+        return; // Character not in table
+    }
+
+    int offset = (ch - 32) * 6;
+
+    lcd->set_cursor(col, row);
+    for (int i = 0; i < 3; i++) {
+        uint8_t shape_index = big_font_ascii_table[offset + i];
+        lcd->write(shape_index);
+    }
+
+    lcd->set_cursor(col, row + 1);
+    for (int i = 0; i < 3; i++) {
+        uint8_t shape_index = big_font_ascii_table[offset + 3 + i];
+        lcd->write(shape_index);
+    }
+}
