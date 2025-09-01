@@ -52,6 +52,8 @@ add_executable(PEARL
     src/splash_screen.cpp
     src/adaptive_config.cpp
     src/config_manager.cpp
+    src/st7796s.cpp
+    src/ft6336u.cpp
 )
 
 pico_set_program_name(PEARL "PEARL")
@@ -84,6 +86,12 @@ target_link_libraries(lcd_test pico_stdlib hardware_i2c)
 target_include_directories(lcd_test PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/include)
 pico_add_extra_outputs(lcd_test)
 
+# New LCD test target
+add_executable(lcd_test_new src/lcd_test_new.cpp src/st7796s.cpp src/ft6336u.cpp)
+target_link_libraries(lcd_test_new pico_stdlib hardware_spi hardware_i2c)
+target_include_directories(lcd_test_new PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/include)
+pico_add_extra_outputs(lcd_test_new)
+
 # Add any user requested libraries
 target_link_libraries(PEARL 
     hardware_i2c
@@ -91,6 +99,7 @@ target_link_libraries(PEARL
     hardware_gpio
     hardware_timer
     hardware_flash
+    hardware_rtc
     )
 
 pico_add_extra_outputs(PEARL)
