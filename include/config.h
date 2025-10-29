@@ -2,8 +2,8 @@
 #define CONFIG_H
 
 // Pin Configuration
-#define I2C_SDA 4
-#define I2C_SCL 5
+#define I2C_SDA 8               // CONFIGURATION FIX: Updated to match docs
+#define I2C_SCL 9               // CONFIGURATION FIX: Updated to match docs  
 #define ENCODER_PIN_A 10
 #define ENCODER_PIN_B 11
 

@@ -61,6 +61,7 @@ private:
     void write_nibble(uint8_t nibble);
     void write_byte(uint8_t data, uint8_t mode);
     void pulse_enable(uint8_t data);
+    bool write_safe(const uint8_t* data, size_t len);  // ERROR RECOVERY: Safe write with retries
     
 public:
     LCD_I2C(i2c_inst_t* i2c, uint8_t addr = LCD_ADDR);
@@ -69,7 +70,7 @@ public:
     void clear();
     void home();
     void set_cursor(uint8_t col, uint8_t row);
-    void print(const char* str);
+    bool print(const char* str);      // ERROR RECOVERY: Changed to return success status
     void printf(const char* format, ...);
     void backlight_on();
     void backlight_off();

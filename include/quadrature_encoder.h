@@ -12,7 +12,7 @@ protected:  // Changed from private to allow inheritance
     PIO pio;
     uint sm;
     uint pin_a, pin_b;
-    int32_t position;
+    int64_t position;      // SAFETY FIX: Changed from int32_t to prevent overflow
     uint8_t last_state;
     float pitch;           // Thread pitch (distance per revolution)
     uint32_t resolution;   // Encoder pulses per revolution
@@ -50,10 +50,10 @@ public:
     virtual void update();
     
     // Position methods
-    int32_t get_raw_position() const { return position; }
+    int64_t get_raw_position() const { return position; }  // SAFETY FIX: Updated return type
     float get_distance() const;
     void reset_position() { position = 0; }
-    void set_position(int32_t new_position) { position = new_position; }
+    void set_position(int64_t new_position) { position = new_position; }  // SAFETY FIX: Updated parameter type
     
     // Velocity methods
     float get_velocity() const { return current_velocity; }      // Distance per second

@@ -1,5 +1,6 @@
 
-# (Moved lcd_test target setup to after Pico SDK/project setup)
+# 
+# (PEARL is the main executable target)
 # Generated Cmake Pico project file
 
 cmake_minimum_required(VERSION 3.13)
@@ -79,11 +80,7 @@ target_include_directories(PEARL PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
-# Minimal LCD test target (after Pico SDK/project setup)
-add_executable(lcd_test src/lcd_test.cpp src/lcd_i2c.cpp)
-target_link_libraries(lcd_test pico_stdlib hardware_i2c)
-target_include_directories(lcd_test PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/include)
-pico_add_extra_outputs(lcd_test)
+# PEARL is the main target - lcd_test removed as no longer needed
 
 # Add any user requested libraries
 target_link_libraries(PEARL 

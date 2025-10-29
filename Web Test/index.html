@@ -12,8 +12,16 @@
         <button id="connect-btn">Connect to Pico</button>
         <button onclick="runAllTests()">Run All Tests (Web Only)</button>
         <button id="run-pico-tests" disabled>Run All Tests on Pico</button>
+        
+        <h3>Menu Test Commands</h3>
+        <button onclick="sendMenuCommand('T')" disabled id="test-status">Test Menu Status</button>
+        <button onclick="sendMenuCommand('U')" disabled id="user-menu">User Menu</button>
+        <button onclick="sendMenuCommand('E')" disabled id="eng-menu">Engineering Menu</button>
+        <button onclick="sendMenuCommand('Q')" disabled id="exit-menu">Exit Menu</button>
+        <button onclick="sendMenuCommand('M')" disabled id="menu-encoder">Menu Encoder Status</button>
+        
         <div id="test-results"></div>
-        <div id="serial-output" style="white-space:pre; background:#222; color:#0f0; padding:1em; margin-top:1em; max-height:200px; overflow:auto;"></div>
+        <div id="serial-output" style="white-space:pre; background:#222; color:#0f0; padding:1em; margin-top:1em; max-height:300px; overflow:auto;"></div>
     </div>
     <script src="test.js"></script>
 </body>

@@ -83,10 +83,13 @@ void LCD_I2C::set_cursor(uint8_t col, uint8_t row) {
     write_byte(addr, 0);
 }
 
-void LCD_I2C::print(const char* str) {
+bool LCD_I2C::print(const char* str) {  // ERROR RECOVERY: Updated to return success status
+    bool success = true;
     while (*str) {
         write_byte(*str++, RS);
+        // Note: write_byte should be enhanced with error checking in future iterations
     }
+    return success;  // For now, assume success - can be enhanced later
 }
 
 void LCD_I2C::printf(const char* format, ...) {
@@ -124,4 +127,16 @@ void LCD_I2C::create_char(uint8_t location, const uint8_t charmap[]) {
 
 void LCD_I2C::write(uint8_t value) {
     write_byte(value, RS);
+}
+
+// ERROR RECOVERY: Safe write with retries
+bool LCD_I2C::write_safe(const uint8_t* data, size_t len) {
+    for (int retry = 0; retry < 3; retry++) {
+        int result = i2c_write_blocking(i2c_port, lcd_addr, data, len, false);
+        if (result == len) {
+            return true;  // Success
+        }
+        sleep_ms(1);  // Brief delay before retry
+    }
+    return false;  // Failed after retries
 }

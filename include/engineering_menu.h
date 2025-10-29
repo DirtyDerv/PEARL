@@ -188,7 +188,7 @@ private:
     uint8_t password_attempts;      // Failed password attempts
     uint8_t password_entry[4];      // 4-digit password entry array
 
-    // Non-blocking value editor context
+    // Non-blocking value editor contexts
     struct IntEditContext {
         const char* label;
         int32_t* value_ptr;
@@ -197,6 +197,51 @@ private:
         int32_t temp_value;
         bool active;
     } int_edit_ctx;
+
+    struct FloatEditContext {
+        const char* label;
+        float* value_ptr;
+        float min;
+        float max;
+        float step;
+        float temp_value;
+        bool active;
+    } float_edit_ctx;
+
+    struct BoolEditContext {
+        const char* label;
+        bool* value_ptr;
+        bool temp_value;
+        bool active;
+    } bool_edit_ctx;
+
+    struct PositionEditContext {
+        const char* title;
+        int32_t current_pos;
+        int32_t new_position;
+        bool active;
+    } position_edit_ctx;
+
+    // Position reset context (non-blocking)
+    struct ResetContext {
+        uint32_t start_time;
+        bool waiting;
+    } reset_ctx;
+
+    // State variables (moved from static locals to prevent corruption)
+    int cal_step;
+    float temp_pos1;
+    float temp_pos2;
+    int32_t last_encoder;
+    MainMenuItems eng_selected;
+    int set_params_selected;
+    bool factory_reset_confirm;
+
+    // Password change state variables
+    uint16_t new_password[4];
+    uint16_t confirm_password[4];
+    uint8_t password_change_digit_index;
+    bool password_confirm_mode;
 
     // Menu timeout settings
     static const uint32_t MENU_TIMEOUT_MS = 60000;  // 1 minute timeout
@@ -255,9 +300,25 @@ public:
     void show_confirmation_dialog(const char* message);
     void start_value_editor(const char* name, long* value, long min, long max);
     void update_value_editor(bool button_pressed, bool button_held);
-    void show_float_editor(const char* name, float* value, float min, float max, float step);
-    void show_bool_editor(const char* name, bool* value);
-    void show_position_editor(const char* title, int32_t current_pos);
+
+    // Non-blocking editor functions
+    void start_float_editor(const char* name, float* value, float min, float max, float step);
+    void update_float_editor(MenuDirection direction);
+    void draw_float_editor();
+
+    void start_bool_editor(const char* name, bool* value);
+    void update_bool_editor(MenuDirection direction);
+    void draw_bool_editor();
+
+    void start_position_editor(const char* title, int32_t current_pos);
+    void update_position_editor(MenuDirection direction);
+    void draw_position_editor();
+
+    void start_position_reset();
+    void update_position_reset(MenuDirection direction);
+
+    // State management
+    void reset_menu_state();
     
     // Calibration system methods
     void start_calibration();

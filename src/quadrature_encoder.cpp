@@ -60,7 +60,7 @@ void QuadratureEncoder::init() {
 
 void QuadratureEncoder::update() {
     uint32_t current_time = to_ms_since_boot(get_absolute_time());
-    int32_t old_position = position;
+    int64_t old_position = position;  // SAFETY FIX: Updated to int64_t
     
     if (use_pio) {
         // Read from PIO FIFO with performance monitoring
@@ -99,9 +99,9 @@ void QuadratureEncoder::update() {
     
     // Update velocity if position changed
     if (position != old_position) {
-        int32_t position_delta = position - old_position;
+        int64_t position_delta = position - old_position;  // SAFETY FIX: Updated to int64_t
         uint32_t time_delta = current_time - last_update_time;
-        add_velocity_sample(position_delta, time_delta);
+        add_velocity_sample((int32_t)position_delta, time_delta);  // Cast to int32_t for velocity calc
         
         // Update frequency monitoring (v0.02 enhancement)
         if (current_time - last_frequency_check >= 1000) { // Update every second
@@ -109,7 +109,7 @@ void QuadratureEncoder::update() {
             transitions_per_second = 0;
             last_frequency_check = current_time;
         }
-        transitions_per_second += abs(position_delta);
+        transitions_per_second += abs((int32_t)position_delta);  // Cast for abs() function
     }
     
     last_update_time = current_time;

@@ -1,6 +1,7 @@
 
 #include "engineering_menu.h"
 #include "hardware/watchdog.h"
+#include <cmath>  // SAFETY FIX: Added for fabsf function
 #ifndef SRAM_END
 #define SRAM_END 0x20042000
 #endif
@@ -24,14 +25,19 @@ bool g_menu_button_held = false;
 #include "engineering_menu.h"
 #include "splash_screen.h"
 #include "config_manager.h"
+#include "performance_monitor.h"  // Performance Agent integration
 
 void display_position_info(LCD_I2C& lcd, QuadratureEncoder& encoder, BigFont& big_font, StatusDisplay& status) {
     // Minimal main display: clear LCD and print position as plain number
     lcd.clear();
     float position = encoder.get_distance();
     lcd.set_cursor(0, 0);
-    char buf[16];
-    snprintf(buf, sizeof(buf), "Pos: %7.2f", position);
+    char buf[32];  // SAFETY FIX: Increased buffer size from 16 to 32
+    int written = snprintf(buf, sizeof(buf), "Pos: %7.2f", position);
+    if (written >= sizeof(buf)) {
+        // Handle overflow gracefully
+        snprintf(buf, sizeof(buf), "Pos: OVERFLOW");
+    }
     lcd.print(buf);
 }
 
@@ -166,7 +172,7 @@ int main() {
     encoder.init();
 
     // Shared variables for multicore
-    static volatile int32_t shared_position = 0;
+    static volatile int64_t shared_position = 0;  // SAFETY FIX: Updated to int64_t
     static volatile float shared_distance = 0.0f;
     static volatile uint32_t shared_fifo_ovf = 0;
     static volatile uint32_t shared_inv_trans = 0;
@@ -183,6 +189,9 @@ int main() {
             shared_fifo_ovf = encoder.get_fifo_overflow_count();
             shared_inv_trans = encoder.get_invalid_transition_count();
             mutex_exit(&encoder_mutex);
+            
+            // PERFORMANCE FIX: Add brief yield to prevent CPU starvation
+            sleep_us(10);  // 10 microsecond yield allows other core to run
         }
     };
     multicore_launch_core1(core1_encoder_task);
@@ -209,11 +218,12 @@ int main() {
     }
     
     uint32_t last_update = 0;
-    int32_t last_position = 0;
+    int64_t last_position = 0;  // SAFETY FIX: Updated to int64_t
     uint32_t update_rate_ms = GET_UPDATE_RATE();  // Use configured update rate
     
     printf("Starting main position monitoring loop...\n");
     printf("Commands: R=reset, S=scan, P=PIO toggle, V=velocity/perf, D=display, C=clear counters, I=version, H=help\n");
+    printf("Menu Test Commands: T=test menu, U=user menu, E=engineering menu, Q=exit menu\n");
     printf("Engineering Menu: Triple-click the HW-040 encoder button within 1 second\n\n");
     
     while (true) {
@@ -291,13 +301,27 @@ int main() {
             printf("M - Show menu encoder status\n");
             printf("I - Show version info\n");
             printf("H - Show this help\n");
+            printf("\n=== Performance Commands ===\n");
+            printf("B - Run performance benchmark\n");
+            printf("W - Start continuous monitoring\n");
+            printf("\n=== Menu Test Commands ===\n");
+            printf("T - Test menu system status\n");
+            printf("U - Force user menu activation\n");
+            printf("E - Force engineering menu activation\n");
+            printf("Q - Force menu exit\n");
             printf("\n=== Engineering Menu ===\n");
             printf("Triple-click HW-040 encoder to access\n\n");
         } else if (c == 'p' || c == 'P') {
+            // SAFETY FIX: Move init() outside critical section to prevent Core1 starvation
+            bool current_pio_mode;
             mutex_enter_blocking(&encoder_mutex);
-            encoder.enable_pio_mode(!encoder.is_pio_enabled());
-            encoder.init();  // Reinitialize with new mode
+            current_pio_mode = encoder.is_pio_enabled();
             mutex_exit(&encoder_mutex);
+            
+            // Toggle mode and reinitialize outside mutex
+            encoder.enable_pio_mode(!current_pio_mode);
+            encoder.init();  // Safe: no mutex held during potentially blocking init
+            
             printf("Switched to %s mode\n", encoder.is_pio_enabled() ? "PIO" : "GPIO");
         } else if (c == 'v' || c == 'V') {
             mutex_enter_blocking(&encoder_mutex);
@@ -342,10 +366,60 @@ int main() {
         } else if (c == 'd' || c == 'D') {
             // Toggle display mode (future enhancement placeholder)
             printf("Big font display mode (additional modes coming soon)\n");
+        } else if (c == 't' || c == 'T') {
+            // MENU TEST: Comprehensive menu system test
+            printf("\n=== MENU SYSTEM TEST ===\n");
+            printf("Testing menu state machine...\n");
+            printf("Current menu state: %s\n", eng_menu.is_menu_active() ? "ACTIVE" : "INACTIVE");
+            printf("Menu encoder position: %ld\n", menu_encoder.get_position());
+            printf("Menu encoder status: %s\n", menu_encoder.get_status());
+            printf("Test complete.\n\n");
+        } else if (c == 'u' || c == 'U') {
+            // MENU TEST: Force user menu activation
+            printf("\n=== USER MENU TEST ===\n");
+            if (!eng_menu.is_menu_active()) {
+                printf("Activating user menu via serial command...\n");
+                eng_menu.start_user_menu();
+            } else {
+                printf("Menu already active - cannot start user menu\n");
+            }
+        } else if (c == 'e' || c == 'E') {
+#ifdef DEBUG_MODE
+            // MENU TEST: Force engineering menu activation (skip password) - DEBUG ONLY
+            printf("\n=== ENGINEERING MENU TEST (DEBUG) ===\n");
+            if (!eng_menu.is_menu_active()) {
+                printf("Activating engineering menu via serial command (bypassing password)...\n");
+                eng_menu.start_engineering_access();
+            } else {
+                printf("Menu already active - cannot start engineering menu\n");
+            }
+#else
+            printf("Engineering menu bypass disabled in production build\n");
+#endif
+        } else if (c == 'q' || c == 'Q') {
+            // MENU TEST: Force menu exit
+            printf("\n=== MENU EXIT TEST ===\n");
+            if (eng_menu.is_menu_active()) {
+                printf("Forcing menu exit via serial command...\n");
+                eng_menu.deactivate_menu();  // Use the public method
+            } else {
+                printf("No menu currently active\n");
+            }
+        } else if (c == 'd' || c == 'D') {
+            // Toggle display mode (future enhancement placeholder)
+            printf("Big font display mode (additional modes coming soon)\n");
+        } else if (c == 'b' || c == 'B') {
+            // PERFORMANCE: Run comprehensive benchmark
+            printf("\n🚀 Starting Performance Benchmark...\n");
+            run_performance_benchmark(&eng_menu, &encoder, &lcd);
+        } else if (c == 'w' || c == 'W') {
+            // PERFORMANCE: Start continuous monitoring
+            printf("\n🔄 Starting Continuous Performance Monitoring...\n");
+            run_continuous_monitoring(&eng_menu, &encoder, &lcd);
         }
 
         // Update display at regular interval or when position changes significantly
-        int32_t current_position;
+        int64_t current_position;  // SAFETY FIX: Updated to int64_t
         float current_distance;
         uint32_t current_fifo_ovf, current_inv_trans;
         mutex_enter_blocking(&encoder_mutex);
@@ -357,16 +431,25 @@ int main() {
 
         bool position_changed = (current_position != last_position);
         bool time_to_update = (current_time - last_update) >= update_rate_ms;
+        
+        // PERFORMANCE FIX: Only update LCD when significant change occurs
+        static float last_displayed_distance = -999.0f;
+        bool significant_change = fabsf(current_distance - last_displayed_distance) > 0.01f;
 
-        if (position_changed || time_to_update) {
+        if ((position_changed && significant_change) || time_to_update) {
             // Only update display if menu is NOT active
             if (!eng_menu.is_menu_active()) {
                 lcd.clear();
                 lcd.set_cursor(0, 0);
-                char buf[16];
-                snprintf(buf, sizeof(buf), "Pos: %7.2f", current_distance);
+                char buf[32];  // SAFETY FIX: Increased buffer size from 16 to 32
+                int written = snprintf(buf, sizeof(buf), "Pos: %7.2f", current_distance);
+                if (written >= sizeof(buf)) {
+                    // Handle overflow gracefully
+                    snprintf(buf, sizeof(buf), "Pos: OVERFLOW");
+                }
                 lcd.print(buf);
                 last_update = current_time;
+                last_displayed_distance = current_distance;  // Track last displayed value
 
                 // Encoder debug print removed
 

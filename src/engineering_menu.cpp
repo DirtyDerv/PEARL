@@ -7,116 +7,14 @@
 #include "engineering_menu.h"
 #include "version.h"
 
-// --- Calibration Flow Implementation ---
+// --- Calibration Flow Implementation (now uses CalibrationState) ---
+// NOTE: The old handle_calibration_flow with static variables has been removed
+// This simple wrapper routes to the new handle_calibration_state system
 void EngineeringMenu::handle_calibration_flow(MenuDirection direction) {
-    static int cal_step = 0;
-    static float temp_pos1 = 0.0f;
-    static float temp_pos2 = 0.0f;
-    static int32_t last_encoder = 0;
-    switch (cal_step) {
-        case 0: // Intro
-            if (direction == MenuDirection::ENTER) {
-                cal_step = 1;
-                temp_pos1 = calibration.measured_pos1_mm;
-                last_encoder = menu_encoder->get_position();
-                draw_calibration_set_pos1(temp_pos1);
-            } else if (direction == MenuDirection::BACK) {
-                cal_step = 0;
-                current_state = MenuState::MAIN_MENU;
-                handle_engineer_main_menu(MenuDirection::NONE);
-            }
-            break;
-        case 1: // Set Position 1 (edit value)
-            {
-                int32_t enc_now = menu_encoder->get_position();
-                int32_t delta = enc_now - last_encoder;
-                last_encoder = enc_now;
-                temp_pos1 += delta * 0.01f; // 0.01mm per detent
-                if (direction == MenuDirection::UP) {
-                    temp_pos1 += 0.01f;
-                } else if (direction == MenuDirection::DOWN) {
-                    temp_pos1 -= 0.01f;
-                }
-                if (direction == MenuDirection::ENTER) {
-                    calibration.encoder_pos1 = main_encoder->get_raw_position();
-                    calibration.measured_pos1_mm = temp_pos1;
-                    cal_step = 2;
-                    draw_calibration_move_prompt();
-                } else if (direction == MenuDirection::BACK) {
-                    cal_step = 0;
-                    draw_calibration_intro();
-                } else {
-                    draw_calibration_set_pos1(temp_pos1);
-                }
-            }
-            break;
-        case 2: // Prompt move to position 2
-            if (direction == MenuDirection::ENTER) {
-                cal_step = 3;
-                temp_pos2 = calibration.measured_pos2_mm;
-                last_encoder = menu_encoder->get_position();
-                draw_calibration_set_pos2(temp_pos2);
-            } else if (direction == MenuDirection::BACK) {
-                cal_step = 1;
-                draw_calibration_set_pos1(temp_pos1);
-            }
-            break;
-        case 3: // Set Position 2 (edit value)
-            {
-                int32_t enc_now = menu_encoder->get_position();
-                int32_t delta = enc_now - last_encoder;
-                last_encoder = enc_now;
-                temp_pos2 += delta * 0.01f;
-                if (direction == MenuDirection::UP) {
-                    temp_pos2 += 0.01f;
-                } else if (direction == MenuDirection::DOWN) {
-                    temp_pos2 -= 0.01f;
-                }
-                if (direction == MenuDirection::ENTER) {
-                    calibration.encoder_pos2 = main_encoder->get_raw_position();
-                    calibration.measured_pos2_mm = temp_pos2;
-                    cal_step = 4;
-                    draw_calibration_calculate();
-                } else if (direction == MenuDirection::BACK) {
-                    cal_step = 2;
-                    draw_calibration_move_prompt();
-                } else {
-                    draw_calibration_set_pos2(temp_pos2);
-                }
-            }
-            break;
-        case 4: // Calculate and review
-            if (direction == MenuDirection::ENTER) {
-                float delta_mm = calibration.measured_pos2_mm - calibration.measured_pos1_mm;
-                int32_t delta_enc = calibration.encoder_pos2 - calibration.encoder_pos1;
-                calibration.calculated_pitch = (delta_enc != 0) ? delta_mm / delta_enc : 0.0f;
-                cal_step = 5;
-                draw_calibration_review();
-            } else if (direction == MenuDirection::BACK) {
-                cal_step = 3;
-                draw_calibration_set_pos2(temp_pos2);
-            }
-            break;
-        case 5: // Review/Undo
-            if (direction == MenuDirection::ENTER) {
-                // Accept calibration
-                // Save pitch to config or wherever needed
-                config.encoder_scale_factor = calibration.calculated_pitch;
-                draw_calibration_complete(true);
-                sleep_ms(1000);
-                cal_step = 0;
-                current_state = MenuState::MAIN_MENU;
-                handle_engineer_main_menu(MenuDirection::NONE);
-            } else if (direction == MenuDirection::BACK) {
-                // Undo, return to main menu without saving
-                draw_calibration_complete(false);
-                sleep_ms(1000);
-                cal_step = 0;
-                current_state = MenuState::MAIN_MENU;
-                handle_engineer_main_menu(MenuDirection::NONE);
-            }
-            break;
+    if (!calibration.active) {
+        start_calibration();
     }
+    handle_calibration_state(direction);
 }
 
 void EngineeringMenu::draw_calibration_set_pos1(float pos_mm) {
@@ -221,16 +119,52 @@ void EngineeringMenu::show_about_submenu() {
 // ...existing code...
 
 
-EngineeringMenu::EngineeringMenu(LCD_I2C* display, HW040Encoder* encoder, 
+EngineeringMenu::EngineeringMenu(LCD_I2C* display, HW040Encoder* encoder,
                                 QuadratureEncoder* main_enc, StatusDisplay* status)
     : lcd(display), menu_encoder(encoder), main_encoder(main_enc), status_display(status),
       current_state(MenuState::HIDDEN), selected_item(MainMenuItems::ENCODER_SETTINGS),
       selected_user_item(UserMenuItems::RESET_POSITION),
       submenu_index(0), menu_active(false), menu_timeout(MENU_TIMEOUT_MS), last_activity(0),
-    password_digit_index(0), password_timeout(0), password_attempts(0) {
-    for (int i = 0; i < 4; ++i) password_entry[i] = 0;
+      password_digit_index(0), password_timeout(0), password_attempts(0),
+      cal_step(0), temp_pos1(0.0f), temp_pos2(0.0f), last_encoder(0),
+      eng_selected(MainMenuItems::ENCODER_SETTINGS), set_params_selected(0),
+      factory_reset_confirm(false), password_change_digit_index(0), password_confirm_mode(false) {
+    for (int i = 0; i < 4; ++i) {
+        password_entry[i] = 0;
+        new_password[i] = 0;
+        confirm_password[i] = 0;
+    }
+    float_edit_ctx.active = false;
+    bool_edit_ctx.active = false;
+    position_edit_ctx.active = false;
+    reset_ctx.waiting = false;
     load_default_config();
     reset_password_entry();
+    reset_calibration();
+}
+
+void EngineeringMenu::reset_menu_state() {
+    // Reset all state variables to prevent corruption between menu sessions
+    cal_step = 0;
+    temp_pos1 = 0.0f;
+    temp_pos2 = 0.0f;
+    last_encoder = 0;
+    eng_selected = MainMenuItems::ENCODER_SETTINGS;
+    set_params_selected = 0;
+    factory_reset_confirm = false;
+    password_change_digit_index = 0;
+    password_confirm_mode = false;
+
+    for (int i = 0; i < 4; ++i) {
+        new_password[i] = 0;
+        confirm_password[i] = 0;
+    }
+
+    float_edit_ctx.active = false;
+    bool_edit_ctx.active = false;
+    position_edit_ctx.active = false;
+    reset_ctx.waiting = false;
+
     reset_calibration();
 }
 
@@ -281,9 +215,7 @@ void EngineeringMenu::activate_menu() {
 }
 
 void EngineeringMenu::update(bool button_pressed, bool button_held) {
-    printf("[DEBUG] EngineeringMenu::update called, menu_active=%d, current_state=%d\n", menu_active, (int)current_state);
     if (!menu_active) return;
-    printf("[DEBUG] EngineeringMenu::update called, current_state=%d\n", (int)current_state);
     uint32_t current_time = time_us_32();
 
     // Update calibration system if active
@@ -325,6 +257,23 @@ void EngineeringMenu::update(bool button_pressed, bool button_held) {
 }
 
 void EngineeringMenu::handle_menu_input(MenuDirection direction) {
+    // Check if any non-blocking editor is active and route input to it
+    if (float_edit_ctx.active) {
+        update_float_editor(direction);
+        return;
+    }
+    if (bool_edit_ctx.active) {
+        update_bool_editor(direction);
+        return;
+    }
+    if (position_edit_ctx.active) {
+        update_position_editor(direction);
+        return;
+    }
+    if (reset_ctx.waiting) {
+        update_position_reset(direction);
+        return;
+    }
 
     switch (current_state) {
         case MenuState::PASSWORD_ENTRY:
@@ -373,7 +322,6 @@ void EngineeringMenu::handle_menu_input(MenuDirection direction) {
 }
 // Engineer Main Menu handler using MainMenuItems
 void EngineeringMenu::handle_engineer_main_menu(MenuDirection direction) {
-    static MainMenuItems eng_selected = MainMenuItems::ENCODER_SETTINGS;
     int max_item = static_cast<int>(MainMenuItems::ITEM_COUNT) - 1;
     switch (direction) {
         case MenuDirection::UP:
@@ -444,7 +392,6 @@ void EngineeringMenu::draw_calibration_intro() {
 }
 
 void EngineeringMenu::draw_engineer_main_menu(MainMenuItems selected) {
-    printf("[DEBUG] draw_engineer_main_menu called, lcd ptr: %p\n", lcd);
     lcd->clear();
     lcd->set_cursor(0, 0);
     lcd->print("ENGINEER MENU");
@@ -471,7 +418,6 @@ void EngineeringMenu::draw_engineer_main_menu(MainMenuItems selected) {
 
 // Set Params submenu handler with grouping and descriptions
 void EngineeringMenu::handle_set_params_menu(MenuDirection direction) {
-    static int set_params_selected = 0;
     const int set_params_count = 5; // Encoder, Display, System, Security, Back
     switch (direction) {
         case MenuDirection::UP:
@@ -622,14 +568,13 @@ void EngineeringMenu::handle_encoder_config(MenuDirection direction) {
 }
 
 void EngineeringMenu::handle_factory_reset_confirm(MenuDirection direction) {
-    static bool confirm = false;
-    if (!confirm) {
+    if (!factory_reset_confirm) {
         lcd->clear();
         lcd->set_cursor(0, 0);
         lcd->print("Confirm Factory Reset?");
         lcd->set_cursor(0, 1);
         lcd->print("Enter=Yes Back=No");
-        confirm = true;
+        factory_reset_confirm = true;
         return;
     }
     if (direction == MenuDirection::ENTER) {
@@ -638,11 +583,11 @@ void EngineeringMenu::handle_factory_reset_confirm(MenuDirection direction) {
         lcd->set_cursor(0, 0);
         lcd->print("Factory Reset Done");
         sleep_ms(1500);
-        confirm = false;
+        factory_reset_confirm = false;
         current_state = MenuState::MAIN_MENU;
         handle_engineer_main_menu(MenuDirection::NONE);
     } else if (direction == MenuDirection::BACK) {
-        confirm = false;
+        factory_reset_confirm = false;
         current_state = MenuState::MAIN_MENU;
         handle_engineer_main_menu(MenuDirection::NONE);
     }
@@ -708,13 +653,14 @@ void EngineeringMenu::exit_to_main() {
 }
 
 void EngineeringMenu::exit_menu() {
+    reset_menu_state();  // Clear all state to prevent corruption
     menu_active = false;
     current_state = MenuState::HIDDEN;
     lcd->clear();
     lcd->set_cursor(0, 0);
     lcd->print("MENU CLOSED");
     sleep_ms(500);
-    
+
     // Return to normal display
     // Status will be updated in the main loop
 }
@@ -853,63 +799,246 @@ void EngineeringMenu::handle_factory_reset(MenuDirection direction) {
     }
 }
 
-void EngineeringMenu::show_float_editor(const char* name, float* value, float min, float max, float step) {
-    float temp_value = *value;
-    bool editing = true;
-    while (editing) {
-        lcd->clear();
-        lcd->set_cursor(0, 0);
-        lcd->print("EDIT: ");
-        lcd->print(name);
-        lcd->set_cursor(0, 1);
-        char value_str[20];
-        snprintf(value_str, sizeof(value_str), "Value: %.2f", temp_value);
-        lcd->print(value_str);
-        lcd->set_cursor(0, 2);
-        char range_str[20];
-        snprintf(range_str, sizeof(range_str), "Range: %.2f-%.2f", min, max);
-        lcd->print(range_str);
-        lcd->set_cursor(0, 3);
-        lcd->print("Turn:Edit Hold:Save");
-        int32_t delta = menu_encoder->get_delta();
-        if (delta != 0) {
-            temp_value += step * delta;
-            if (temp_value < min) temp_value = min;
-            if (temp_value > max) temp_value = max;
-        }
-        // Use global button_held flag (set by update)
-        extern bool g_menu_button_held;
-        if (g_menu_button_held) {
-            *value = temp_value;
-            editing = false;
-        }
-        sleep_ms(100);
-    }
-    draw_submenu();
+// ============================================================================
+// NON-BLOCKING EDITOR IMPLEMENTATIONS
+// ============================================================================
+// NOTE: Old blocking show_float_editor and show_bool_editor have been removed
+// Use start_float_editor/update_float_editor and start_bool_editor/update_bool_editor instead
+
+void EngineeringMenu::start_float_editor(const char* name, float* value, float min, float max, float step) {
+    float_edit_ctx.label = name;
+    float_edit_ctx.value_ptr = value;
+    float_edit_ctx.min = min;
+    float_edit_ctx.max = max;
+    float_edit_ctx.step = step;
+    float_edit_ctx.temp_value = *value;
+    float_edit_ctx.active = true;
+    draw_float_editor();
 }
 
-void EngineeringMenu::show_bool_editor(const char* name, bool* value) {
-    bool temp_value = *value;
-    bool editing = true;
-    while (editing) {
+void EngineeringMenu::update_float_editor(MenuDirection direction) {
+    if (!float_edit_ctx.active) return;
+
+    switch (direction) {
+        case MenuDirection::UP:
+            float_edit_ctx.temp_value += float_edit_ctx.step;
+            if (float_edit_ctx.temp_value > float_edit_ctx.max)
+                float_edit_ctx.temp_value = float_edit_ctx.max;
+            draw_float_editor();
+            break;
+
+        case MenuDirection::DOWN:
+            float_edit_ctx.temp_value -= float_edit_ctx.step;
+            if (float_edit_ctx.temp_value < float_edit_ctx.min)
+                float_edit_ctx.temp_value = float_edit_ctx.min;
+            draw_float_editor();
+            break;
+
+        case MenuDirection::ENTER:
+            // Save value and exit editor
+            *float_edit_ctx.value_ptr = float_edit_ctx.temp_value;
+            float_edit_ctx.active = false;
+            draw_submenu();
+            break;
+
+        case MenuDirection::BACK:
+            // Cancel without saving
+            float_edit_ctx.active = false;
+            draw_submenu();
+            break;
+
+        default:
+            break;
+    }
+}
+
+void EngineeringMenu::draw_float_editor() {
+    lcd->clear();
+    lcd->set_cursor(0, 0);
+    lcd->print("EDIT: ");
+    lcd->print(float_edit_ctx.label);
+    lcd->set_cursor(0, 1);
+    char value_str[20];
+    snprintf(value_str, sizeof(value_str), "Value: %.2f", float_edit_ctx.temp_value);
+    lcd->print(value_str);
+    lcd->set_cursor(0, 2);
+    char range_str[20];
+    snprintf(range_str, sizeof(range_str), "%.2f-%.2f", float_edit_ctx.min, float_edit_ctx.max);
+    lcd->print(range_str);
+    lcd->set_cursor(0, 3);
+    lcd->print("Enter:OK Back:Cancel");
+}
+
+void EngineeringMenu::start_bool_editor(const char* name, bool* value) {
+    bool_edit_ctx.label = name;
+    bool_edit_ctx.value_ptr = value;
+    bool_edit_ctx.temp_value = *value;
+    bool_edit_ctx.active = true;
+    draw_bool_editor();
+}
+
+void EngineeringMenu::update_bool_editor(MenuDirection direction) {
+    if (!bool_edit_ctx.active) return;
+
+    switch (direction) {
+        case MenuDirection::UP:
+        case MenuDirection::DOWN:
+            // Toggle value
+            bool_edit_ctx.temp_value = !bool_edit_ctx.temp_value;
+            draw_bool_editor();
+            break;
+
+        case MenuDirection::ENTER:
+            // Save value and exit editor
+            *bool_edit_ctx.value_ptr = bool_edit_ctx.temp_value;
+            bool_edit_ctx.active = false;
+            draw_submenu();
+            break;
+
+        case MenuDirection::BACK:
+            // Cancel without saving
+            bool_edit_ctx.active = false;
+            draw_submenu();
+            break;
+
+        default:
+            break;
+    }
+}
+
+void EngineeringMenu::draw_bool_editor() {
+    lcd->clear();
+    lcd->set_cursor(0, 0);
+    lcd->print("EDIT: ");
+    lcd->print(bool_edit_ctx.label);
+    lcd->set_cursor(0, 1);
+    lcd->print(bool_edit_ctx.temp_value ? "ON " : "OFF");
+    lcd->set_cursor(0, 2);
+    lcd->print("Turn:Toggle");
+    lcd->set_cursor(0, 3);
+    lcd->print("Enter:OK Back:Cancel");
+}
+
+void EngineeringMenu::start_position_editor(const char* title, int32_t current_pos) {
+    position_edit_ctx.title = title;
+    position_edit_ctx.current_pos = current_pos;
+    position_edit_ctx.new_position = current_pos;
+    position_edit_ctx.active = true;
+    draw_position_editor();
+}
+
+void EngineeringMenu::update_position_editor(MenuDirection direction) {
+    if (!position_edit_ctx.active) return;
+
+    switch (direction) {
+        case MenuDirection::UP:
+            position_edit_ctx.new_position += 100;  // Increment by 100
+            draw_position_editor();
+            break;
+
+        case MenuDirection::DOWN:
+            position_edit_ctx.new_position -= 100;  // Decrement by 100
+            draw_position_editor();
+            break;
+
+        case MenuDirection::ENTER:
+            // Apply new position
+            main_encoder->set_position(position_edit_ctx.new_position);
+            lcd->clear();
+            lcd->set_cursor(0, 0);
+            lcd->print("POSITION SET TO");
+            lcd->set_cursor(0, 1);
+            char pos_str[20];
+            sprintf(pos_str, "%ld", position_edit_ctx.new_position);
+            lcd->print(pos_str);
+            sleep_ms(1500);
+            position_edit_ctx.active = false;
+            draw_user_menu();
+            break;
+
+        case MenuDirection::BACK:
+            // Cancel
+            position_edit_ctx.active = false;
+            draw_user_menu();
+            break;
+
+        default:
+            break;
+    }
+}
+
+void EngineeringMenu::draw_position_editor() {
+    lcd->clear();
+    lcd->set_cursor(0, 0);
+    lcd->print(position_edit_ctx.title);
+    lcd->set_cursor(0, 1);
+    char current_str[20];
+    sprintf(current_str, "Current: %ld", position_edit_ctx.current_pos);
+    lcd->print(current_str);
+    lcd->set_cursor(0, 2);
+    char new_str[20];
+    sprintf(new_str, "New: %ld", position_edit_ctx.new_position);
+    lcd->print(new_str);
+    lcd->set_cursor(0, 3);
+    lcd->print("Enter:OK Back:Cancel");
+}
+
+void EngineeringMenu::start_position_reset() {
+    reset_ctx.start_time = time_us_32();
+    reset_ctx.waiting = true;
+    lcd->clear();
+    lcd->set_cursor(0, 0);
+    lcd->print("RESET POSITION");
+    lcd->set_cursor(0, 1);
+    lcd->print("Are you sure?");
+    lcd->set_cursor(0, 2);
+    lcd->print("Press: Confirm");
+    lcd->set_cursor(0, 3);
+    lcd->print("Turn: Cancel");
+}
+
+void EngineeringMenu::update_position_reset(MenuDirection direction) {
+    if (!reset_ctx.waiting) return;
+
+    // Check for timeout (5 seconds)
+    if (time_us_32() - reset_ctx.start_time > 5000000) {
         lcd->clear();
         lcd->set_cursor(0, 0);
-        lcd->print("EDIT: ");
-        lcd->print(name);
-        lcd->set_cursor(0, 1);
-        lcd->print(temp_value ? "ON " : "OFF");
-        lcd->set_cursor(0, 2);
-        lcd->print("Turn:Toggle Hold:Save");
-        int32_t delta = menu_encoder->get_delta();
-        if (delta != 0) temp_value = !temp_value;
-        extern bool g_menu_button_held;
-        if (g_menu_button_held) {
-            *value = temp_value;
-            editing = false;
-        }
-        sleep_ms(100);
+        lcd->print("RESET TIMEOUT");
+        sleep_ms(1000);
+        reset_ctx.waiting = false;
+        draw_user_menu();
+        return;
     }
-    draw_submenu();
+
+    switch (direction) {
+        case MenuDirection::ENTER:
+            // Confirm reset
+            main_encoder->set_position(100000); // Set to 100mm
+            lcd->clear();
+            lcd->set_cursor(0, 0);
+            lcd->print("POSITION RESET");
+            lcd->set_cursor(0, 1);
+            lcd->print("TO 100mm");
+            sleep_ms(1500);
+            reset_ctx.waiting = false;
+            draw_user_menu();
+            break;
+
+        case MenuDirection::UP:
+        case MenuDirection::DOWN:
+            // Cancel
+            lcd->clear();
+            lcd->set_cursor(0, 0);
+            lcd->print("RESET CANCELLED");
+            sleep_ms(1000);
+            reset_ctx.waiting = false;
+            draw_user_menu();
+            break;
+
+        default:
+            break;
+    }
 }
 
 void EngineeringMenu::apply_config() {
@@ -1387,7 +1516,6 @@ void EngineeringMenu::start_password_entry() {
     lcd->print("PEARL ACCESS");
     lcd->set_cursor(0, 1);
     lcd->print("Enter Password:");
-    printf("[DEBUG] start_password_entry: LCD cleared, password prompt shown\n");
     draw_password_screen();
 }
 
@@ -1471,7 +1599,6 @@ void EngineeringMenu::handle_password_entry(MenuDirection direction) {
 }
 
 void EngineeringMenu::draw_password_screen() {
-    printf("[DEBUG] draw_password_screen called\n");
     lcd->clear();
     // Row 0: Blank
     lcd->set_cursor(0, 0);
@@ -1498,8 +1625,14 @@ void EngineeringMenu::draw_password_screen() {
 }
 
 bool EngineeringMenu::verify_password() {
-    // Example: hardcoded password 1234
-    const uint8_t correct_password[4] = {1, 2, 3, 4};
+    // Extract digits from config.access_password (e.g., 1234)
+    uint16_t pw = config.access_password;
+    uint8_t correct_password[4];
+    correct_password[0] = (pw / 1000) % 10;
+    correct_password[1] = (pw / 100) % 10;
+    correct_password[2] = (pw / 10) % 10;
+    correct_password[3] = pw % 10;
+
     for (int i = 0; i < 4; ++i) {
         if (password_entry[i] != correct_password[i]) {
             return false;
@@ -1528,43 +1661,38 @@ void EngineeringMenu::handle_password_timeout() {
 }
 
 void EngineeringMenu::handle_password_change(MenuDirection direction) {
-    static uint16_t new_password[4] = {0, 0, 0, 0};
-    static uint8_t digit_index = 0;
-    static bool confirm_mode = false;
-    static uint16_t confirm_password[4] = {0, 0, 0, 0};
-    
     switch (direction) {
         case MenuDirection::UP:
-            if (confirm_mode) {
-                confirm_password[digit_index]++;
-                if (confirm_password[digit_index] > 9) confirm_password[digit_index] = 0;
-                draw_password_change_screen(new_password, confirm_password, digit_index, confirm_mode);
+            if (password_confirm_mode) {
+                confirm_password[password_change_digit_index]++;
+                if (confirm_password[password_change_digit_index] > 9) confirm_password[password_change_digit_index] = 0;
+                draw_password_change_screen(new_password, confirm_password, password_change_digit_index, password_confirm_mode);
             } else {
-                new_password[digit_index]++;
-                if (new_password[digit_index] > 9) new_password[digit_index] = 0;
-                draw_password_change_screen(new_password, confirm_password, digit_index, confirm_mode);
+                new_password[password_change_digit_index]++;
+                if (new_password[password_change_digit_index] > 9) new_password[password_change_digit_index] = 0;
+                draw_password_change_screen(new_password, confirm_password, password_change_digit_index, password_confirm_mode);
             }
             break;
         case MenuDirection::DOWN:
-            if (confirm_mode) {
-                if (confirm_password[digit_index] == 0) confirm_password[digit_index] = 9;
-                else confirm_password[digit_index]--;
-                draw_password_change_screen(new_password, confirm_password, digit_index, confirm_mode);
+            if (password_confirm_mode) {
+                if (confirm_password[password_change_digit_index] == 0) confirm_password[password_change_digit_index] = 9;
+                else confirm_password[password_change_digit_index]--;
+                draw_password_change_screen(new_password, confirm_password, password_change_digit_index, password_confirm_mode);
             } else {
-                if (new_password[digit_index] == 0) new_password[digit_index] = 9;
-                else new_password[digit_index]--;
-                draw_password_change_screen(new_password, confirm_password, digit_index, confirm_mode);
+                if (new_password[password_change_digit_index] == 0) new_password[password_change_digit_index] = 9;
+                else new_password[password_change_digit_index]--;
+                draw_password_change_screen(new_password, confirm_password, password_change_digit_index, password_confirm_mode);
             }
             break;
         case MenuDirection::ENTER:
-            if (digit_index < 3) {
-                digit_index++;
-                draw_password_change_screen(new_password, confirm_password, digit_index, confirm_mode);
-            } else if (!confirm_mode) {
+            if (password_change_digit_index < 3) {
+                password_change_digit_index++;
+                draw_password_change_screen(new_password, confirm_password, password_change_digit_index, password_confirm_mode);
+            } else if (!password_confirm_mode) {
                 // Move to confirm mode
-                confirm_mode = true;
-                digit_index = 0;
-                draw_password_change_screen(new_password, confirm_password, digit_index, confirm_mode);
+                password_confirm_mode = true;
+                password_change_digit_index = 0;
+                draw_password_change_screen(new_password, confirm_password, password_change_digit_index, password_confirm_mode);
             } else {
                 // Compare new_password and confirm_password
                 bool match = true;
@@ -1591,25 +1719,25 @@ void EngineeringMenu::handle_password_change(MenuDirection direction) {
                     lcd->print("MATCH! Try again");
                     sleep_ms(2000);
                     // Reset and start over
-                    confirm_mode = false;
-                    digit_index = 0;
+                    password_confirm_mode = false;
+                    password_change_digit_index = 0;
                     for (int i = 0; i < 4; i++) {
                         new_password[i] = 0;
                         confirm_password[i] = 0;
                     }
-                    draw_password_change_screen(new_password, confirm_password, digit_index, confirm_mode);
+                    draw_password_change_screen(new_password, confirm_password, password_change_digit_index, password_confirm_mode);
                 }
             }
             break;
-            
+
         case MenuDirection::BACK:
-            if (digit_index > 0) {
-                digit_index--;
-                draw_password_change_screen(new_password, confirm_password, digit_index, confirm_mode);
-            } else if (confirm_mode) {
-                confirm_mode = false;
-                digit_index = 3;  // Go back to last digit of new password
-                draw_password_change_screen(new_password, confirm_password, digit_index, confirm_mode);
+            if (password_change_digit_index > 0) {
+                password_change_digit_index--;
+                draw_password_change_screen(new_password, confirm_password, password_change_digit_index, password_confirm_mode);
+            } else if (password_confirm_mode) {
+                password_confirm_mode = false;
+                password_change_digit_index = 3;  // Go back to last digit of new password
+                draw_password_change_screen(new_password, confirm_password, password_change_digit_index, password_confirm_mode);
             } else {
                 exit_to_main();
             }
@@ -1662,7 +1790,6 @@ void EngineeringMenu::draw_password_change_screen(uint16_t* new_pass, uint16_t* 
 // ===== USER MENU SYSTEM =====
 
 void EngineeringMenu::start_user_menu() {
-    printf("[DEBUG] start_user_menu called, setting menu_active = true\n");
     menu_active = true;
     current_state = MenuState::USER_MENU;
     selected_user_item = UserMenuItems::RESET_POSITION;
@@ -1680,7 +1807,6 @@ void EngineeringMenu::start_user_menu() {
 }
 
 void EngineeringMenu::draw_user_menu() {
-    printf("[DEBUG] draw_user_menu called, lcd ptr: %p\n", lcd);
     lcd->clear();
     lcd->set_cursor(0, 0);
     lcd->print("USER MENU");
@@ -1790,115 +1916,20 @@ void EngineeringMenu::draw_user_reset_done() {
 }
 
 void EngineeringMenu::handle_position_reset() {
-    lcd->clear();
-    lcd->set_cursor(0, 0);
-    lcd->print("RESET POSITION");
-    lcd->set_cursor(0, 1);
-    lcd->print("Are you sure?");
-    lcd->set_cursor(0, 2);
-    lcd->print("Press: Confirm");
-    lcd->set_cursor(0, 3);
-    lcd->print("Turn: Cancel");
-    
-    // Wait for user response
-    uint32_t start_time = time_us_32();
-    bool waiting = true;
-    
-    while (waiting && (time_us_32() - start_time < 5000000)) { // 5 second timeout
-        menu_encoder->update();
-        
-        if (menu_encoder->is_button_pressed()) {
-            // Confirm reset
-            main_encoder->set_position(100000); // Set to 100mm (assuming 1 unit = 0.001mm)
-            lcd->clear();
-            lcd->set_cursor(0, 0);
-            lcd->print("POSITION RESET");
-            lcd->set_cursor(0, 1);
-            lcd->print("TO 100mm");
-            sleep_ms(1500);
-            waiting = false;
-        }
-        
-        if (menu_encoder->get_delta() != 0) {
-            // Cancel
-            lcd->clear();
-            lcd->set_cursor(0, 0);
-            lcd->print("RESET CANCELLED");
-            sleep_ms(1000);
-            waiting = false;
-        }
-        
-        sleep_ms(50);
-    }
-    
-    if (waiting) {
-        // Timeout
-        lcd->clear();
-        lcd->set_cursor(0, 0);
-        lcd->print("RESET TIMEOUT");
-        sleep_ms(1000);
-    }
-    
-    draw_user_menu();
+    // Non-blocking implementation - just start the reset process
+    // The actual handling is done in update_position_reset called from handle_menu_input
+    start_position_reset();
 }
 
 void EngineeringMenu::handle_position_set() {
     int32_t current_pos = main_encoder->get_raw_position();
-    show_position_editor("SET POSITION", current_pos);
-    draw_user_menu();
-}
-
-void EngineeringMenu::show_position_editor(const char* title, int32_t current_pos) {
-    int32_t new_position = current_pos;
-    bool editing = true;
-    
-    while (editing) {
-        lcd->clear();
-        lcd->set_cursor(0, 0);
-        lcd->print(title);
-        lcd->set_cursor(0, 1);
-        char current_str[20];
-        sprintf(current_str, "Current: %ld", current_pos);
-        lcd->print(current_str);
-        lcd->set_cursor(0, 2);
-        char new_str[20];
-        sprintf(new_str, "New: %ld", new_position);
-        lcd->print(new_str);
-        lcd->set_cursor(0, 3);
-        lcd->print("Turn:Edit Hold:Set");
-        
-        sleep_ms(100);
-        
-        int32_t delta = menu_encoder->get_delta();
-        if (delta != 0) {
-            new_position += delta;
-        }
-        
-        if (menu_encoder->is_button_pressed()) {
-            // Set new position
-            main_encoder->set_position(new_position);
-            lcd->clear();
-            lcd->set_cursor(0, 0);
-            lcd->print("POSITION SET TO");
-            lcd->set_cursor(0, 1);
-            char pos_str[20];
-            sprintf(pos_str, "%ld", new_position);
-            lcd->print(pos_str);
-            sleep_ms(1500);
-            editing = false;
-        }
-        
-        menu_encoder->update();
-    }
+    start_position_editor("SET POSITION", current_pos);
 }
 
 void EngineeringMenu::start_engineering_access() {
-    printf("[DEBUG] start_engineering_access called, setting menu_active = true\n");
-    printf("[DEBUG] start_engineering_access() called\n");
     menu_active = true;
     current_state = MenuState::PASSWORD_ENTRY;
     password_attempts = 0;
     password_timeout = time_us_32();
-    printf("[DEBUG] current_state set to PASSWORD_ENTRY, menu_active set to true\n");
     start_password_entry();
 }
